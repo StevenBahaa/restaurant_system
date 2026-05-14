@@ -18,6 +18,7 @@ Phase 1 - UC-01:
     ],
     "data": [
         "views/product_template_views.xml",
+        "views/pos_category_views.xml",
     ],
     "installable": True,
     "application": False,
