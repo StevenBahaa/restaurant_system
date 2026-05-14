@@ -18,3 +18,9 @@ class PosCategory(models.Model):
         string="Available Until",
         help="Optional end date for seasonal or temporary menu categories.",
     )
+
+    show_in_pos = fields.Boolean(
+        string="Show in POS",
+        default=True,
+        help="Disable this option to hide this category from POS without archiving its products.",
+    )

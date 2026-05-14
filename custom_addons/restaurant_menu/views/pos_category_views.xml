@@ -8,6 +8,7 @@
             <xpath expr="//sheet" position="inside">
                 <group string="Restaurant Menu Configuration">
                     <field name="is_restaurant_category" />
+                    <field name="show_in_pos" />
                     <field name="available_from" />
                     <field name="available_until" />
                 </group>
