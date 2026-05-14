@@ -37,8 +37,10 @@ class ProductTemplate(models.Model):
     @api.depends("recipe_ids.total_cost")
     def _compute_recipe_cost(self):
         for product in self:
-            active_recipe = product.recipe_ids.filtered(lambda recipe: recipe.active)[:1]
-            product.recipe_cost = active_recipe.total_cost if active_recipe else 0.0
+            active_recipe = product.recipe_ids.filtered(
+                lambda recipe: recipe.active and recipe.state == "approved"
+            )[:1]
+            product.recipe_cost = active_recipe.total_cost if active_recipe else 0.0    
 
     def action_view_recipes(self):
         self.ensure_one()
