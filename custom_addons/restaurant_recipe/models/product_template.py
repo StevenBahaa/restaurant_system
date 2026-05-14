@@ -1,4 +1,5 @@
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class ProductTemplate(models.Model):
@@ -19,6 +20,12 @@ class ProductTemplate(models.Model):
         string="Recipe Cost",
         compute="_compute_recipe_cost",
         currency_field="currency_id",
+        store=True,
+    )
+
+    food_cost_percent = fields.Float(
+        string="Food Cost %",
+        compute="_compute_food_cost_percent",
         store=True,
     )
 
@@ -46,3 +53,23 @@ class ProductTemplate(models.Model):
                 "default_name": "%s Recipe" % self.name,
             },
         }
+
+    @api.depends("recipe_cost", "list_price")
+    def _compute_food_cost_percent(self):
+        for product in self:
+            if product.list_price:
+                product.food_cost_percent = (product.recipe_cost / product.list_price) * 100
+            else:
+                product.food_cost_percent = 0.0 
+
+    @api.constrains("list_price", "recipe_cost", "is_menu_item")
+    def _check_recipe_cost_vs_sales_price(self):
+        for product in self:
+            if (
+                product.is_menu_item
+                and product.recipe_cost > 0
+                and product.list_price < product.recipe_cost
+            ):
+                raise ValidationError(
+                    "Sales price cannot be lower than recipe cost."
+                )

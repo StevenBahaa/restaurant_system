@@ -19,6 +19,7 @@
             <xpath expr="//page[@name='general_information']//group" position="inside">
                 <group string="Recipe &amp; Costing" invisible="not is_menu_item">
                     <field name="recipe_cost" readonly="1" />
+                    <field name="food_cost_percent" readonly="1" />
                 </group>
             </xpath>
 
