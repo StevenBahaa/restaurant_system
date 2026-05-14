@@ -9,7 +9,7 @@
                 <field name="name" />
                 <field name="product_tmpl_id" />
                 <field name="total_cost" />
-                <field name="active" />
+                <field name="active" column_invisible="1" />
             </list>
         </field>
     </record>
@@ -19,12 +19,32 @@
         <field name="model">restaurant.recipe</field>
         <field name="arch" type="xml">
             <form string="Recipe">
+                <header>
+                    <button name="action_approve"
+                        type="object"
+                        string="Approve"
+                        class="btn-primary"
+                        invisible="state != 'draft'" />
+
+                    <button name="action_set_to_draft"
+                        type="object"
+                        string="Reset to Draft"
+                        invisible="state != 'approved'" />
+
+                    <button name="action_archive_recipe"
+                        type="object"
+                        string="Archive"
+                        invisible="not active" />
+
+                    <field name="state" widget="statusbar"
+                        statusbar_visible="draft,approved" />
+                </header>
                 <sheet>
                     <group>
                         <group>
                             <field name="name" />
                             <field name="product_tmpl_id" />
-                            <field name="active" />
+                            <field name="active" invisible="1" />
                         </group>
                         <group>
                             <field name="total_cost" readonly="1" />

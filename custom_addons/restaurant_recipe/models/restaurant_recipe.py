@@ -49,12 +49,34 @@ class RestaurantRecipe(models.Model):
         default=lambda self: self.env.company,
         required=True,
     )
+
+    state = fields.Selection(
+        selection=[
+            ("draft", "Draft"),
+            ("approved", "Approved"),
+        ],
+        string="Status",
+        default="draft",
+        required=True,
+    )
     
     active = fields.Boolean(
         string="Active",
         default=True,
         help="Enable or disable this recipe.",
     )
+
+    def action_approve(self):
+        for recipe in self:
+            recipe.state = "approved"
+
+    def action_set_to_draft(self):
+        for recipe in self:
+            recipe.state = "draft"
+    
+    def action_archive_recipe(self):
+        for recipe in self:
+            recipe.active = False
 
     @api.depends("recipe_line_ids", "recipe_line_ids.line_cost")
     def _compute_total_cost(self):
