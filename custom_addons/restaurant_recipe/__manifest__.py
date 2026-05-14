@@ -12,6 +12,7 @@
     "data": [
         "security/ir.model.access.csv",
         "views/restaurant_recipe_views.xml",
+        "views/product_template_views.xml",
     ],
     "installable": True,
     "application": False,

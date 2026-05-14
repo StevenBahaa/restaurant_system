@@ -28,11 +28,26 @@ class RestaurantRecipe(models.Model):
         string="Recipe Lines",
     )
     
-    total_cost = fields.Float(
+    total_cost = fields.Monetary(
         string="Recipe Cost",
         compute="_compute_total_cost",
         store=True,
         readonly=True,
+        currency_field="currency_id",
+    )
+
+    currency_id = fields.Many2one(
+        comodel_name="res.currency",
+        string="Currency",
+        related="company_id.currency_id",
+        readonly=True,
+    )
+
+    company_id = fields.Many2one(
+        comodel_name="res.company",
+        string="Company",
+        default=lambda self: self.env.company,
+        required=True,
     )
     
     active = fields.Boolean(
@@ -152,6 +167,12 @@ class RestaurantRecipeLine(models.Model):
         for line in self:
             if line.wastage_percent < 0 or line.wastage_percent >= 100:
                 raise ValidationError("Wastage percentage must be between 0 and 99.")
+    
+    @api.onchange("ingredient_product_id")
+    def _onchange_ingredient_product_id(self):
+        for line in self:
+            if line.ingredient_product_id:
+                line.uom_id = line.ingredient_product_id.uom_id
 
     
     
