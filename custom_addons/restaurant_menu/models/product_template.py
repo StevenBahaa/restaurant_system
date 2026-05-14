@@ -14,4 +14,17 @@ class ProductTemplate(models.Model):
         string='Arabic Name',
         help="Arabic display name used for Arabic receipts, local UI, and restaurant operations.",
     )
-    
+
+    restaurant_product_type = fields.Selection(
+        [
+            ("prepared_meal", "Prepared Meal"),
+            ("beverage", "Beverage"),
+            ("ready_item", "Ready Item"),
+            ("ingredient", "Ingredient"),
+            ("packaging", "Packaging Item"),
+            ("semi_finished", "Semi-Finished"),
+        ],
+        string="Restaurant Product Type",
+        default="prepared_meal",
+        help="Operational restaurant classification used for menu, kitchen, recipe, inventory, and reporting workflows.",
+    )

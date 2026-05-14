@@ -6,9 +6,15 @@
         <field name="inherit_id" ref="product.product_template_only_form_view" />
         <field name="arch" type="xml">
             <xpath expr="//page[@name='general_information']//group" position="inside">
-                <group string="Restaurant Menu">
-                    <field name="is_menu_item" />
-                    <field name="arabic_name" invisible="not is_menu_item" />
+                <group string="Restaurant ERP">
+                    <group string="Menu Identity">
+                        <field name="is_menu_item" />
+                        <field name="arabic_name" invisible="not is_menu_item" />
+                    </group>
+
+                    <group string="Restaurant Classification">
+                        <field name="restaurant_product_type" />
+                    </group>
                 </group>
             </xpath>
         </field>
