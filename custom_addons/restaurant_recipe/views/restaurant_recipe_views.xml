@@ -1,2 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<odoo>
 
+    <record id="restaurant_recipe_view_tree" model="ir.ui.view">
+        <field name="name">restaurant.recipe.view.list</field>
+        <field name="model">restaurant.recipe</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name" />
+                <field name="product_tmpl_id" />
+                <field name="total_cost" />
+                <field name="active" />
+            </list>
+        </field>
+    </record>
+
+    <record id="restaurant_recipe_view_form" model="ir.ui.view">
+        <field name="name">restaurant.recipe.view.form</field>
+        <field name="model">restaurant.recipe</field>
+        <field name="arch" type="xml">
+            <form string="Recipe">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" />
+                            <field name="product_tmpl_id" />
+                            <field name="active" />
+                        </group>
+                        <group>
+                            <field name="total_cost" readonly="1" />
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Ingredients">
+                            <field name="recipe_line_ids">
+                                <list editable="bottom">
+                                    <field name="ingredient_product_id" />
+                                    <field name="quantity" />
+                                    <field name="uom_id" />
+                                    <field name="wastage_percent" />
+                                    <field name="actual_quantity" readonly="1" />
+                                    <field name="ingredient_cost" readonly="1" />
+                                    <field name="line_cost" readonly="1" />
+                                    <field name="notes" />
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="restaurant_recipe_action" model="ir.actions.act_window">
+        <field name="name">Recipes</field>
+        <field name="res_model">restaurant.recipe</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="restaurant_root_menu"
+        name="Restaurant ERP"
+        sequence="10" />
+
+    <menuitem id="restaurant_menu_configuration"
+        name="Configuration"
+        parent="restaurant_root_menu"
+        sequence="10" />
+
+    <menuitem id="restaurant_recipe_menu"
+        name="Recipes"
+        parent="restaurant_menu_configuration"
+        action="restaurant_recipe_action"
+        sequence="20" />
+</odoo>

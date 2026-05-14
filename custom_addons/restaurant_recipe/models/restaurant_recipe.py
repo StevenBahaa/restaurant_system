@@ -41,6 +41,11 @@ class RestaurantRecipe(models.Model):
         help="Enable or disable this recipe.",
     )
 
+    @api.depends("recipe_line_ids", "recipe_line_ids.line_cost")
+    def _compute_total_cost(self):
+        for recipe in self:
+            recipe.total_cost = sum(recipe.recipe_line_ids.mapped("line_cost"))
+
 
 
 class RestaurantRecipeLine(models.Model):
@@ -100,11 +105,25 @@ class RestaurantRecipeLine(models.Model):
         store=True,
         readonly=True,
     )
-    
+
     notes = fields.Text(
         string="Notes",
     )
 
+    @api.constrains("ingredient_product_id")
+    def _check_duplicate_ingredient(self):
+        for line in self:
+            duplicates = self.search([
+                ("recipe_id", "=", line.recipe_id.id),
+                ("ingredient_product_id", "=", line.ingredient_product_id.id),
+                ("id", "!=", line.id),
+            ])
+
+            if duplicates:
+                raise ValidationError(
+                    "The same ingredient cannot be added multiple times to the same recipe."
+                )
+    
     @api.depends("quantity", "wastage_percent")
     def _compute_actual_quantity(self):
         for line in self:
@@ -133,5 +152,7 @@ class RestaurantRecipeLine(models.Model):
         for line in self:
             if line.wastage_percent < 0 or line.wastage_percent >= 100:
                 raise ValidationError("Wastage percentage must be between 0 and 99.")
+
+    
     
 
