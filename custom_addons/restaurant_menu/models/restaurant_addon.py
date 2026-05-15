@@ -67,6 +67,12 @@ class RestaurantAddonItem(models.Model):
         default=True,
     )
 
+    ingredient_line_ids = fields.One2many(
+        comodel_name="restaurant.addon.item.ingredient",
+        inverse_name="addon_item_id",
+        string="Ingredient Consumption",
+    )   
+
     @api.constrains("max_quantity")
     def _check_max_quantity(self):
         for addon in self:
@@ -107,6 +113,12 @@ class RestaurantProductAddonGroup(models.Model):
         string="Add-on Group",
         required=True,
         ondelete="restrict",
+    )
+
+    addon_item_ids = fields.One2many(
+       related="addon_group_id.addon_item_ids",
+        string="Add-on Items",
+        readonly=True,
     )
 
     required = fields.Boolean(
@@ -161,3 +173,72 @@ class RestaurantProductAddonGroup(models.Model):
                 raise ValidationError(
                     "This add-on group is already assigned to the menu item."
                 )
+
+class RestaurantAddonItemIngredient(models.Model):
+    _name = "restaurant.addon.item.ingredient"
+    _description = "Restaurant Add-on Item Ingredient"
+
+    addon_item_id = fields.Many2one(
+        comodel_name="restaurant.addon.item",
+        string="Add-on Item",
+        required=True,
+        ondelete="cascade",
+    )
+
+    ingredient_product_id = fields.Many2one(
+        comodel_name="product.template",
+        string="Ingredient",
+        required=True,
+        domain=[
+            ("restaurant_product_type", "=", "ingredient"),
+        ],
+    )
+
+    quantity = fields.Float(
+        string="Quantity",
+        required=True,
+        default=1.0,
+    )
+
+    uom_id = fields.Many2one(
+        comodel_name="uom.uom",
+        string="Unit of Measure",
+        required=True,
+    )
+
+    wastage_percent = fields.Float(
+        string="Wastage %",
+        default=0.0,
+    )
+
+    actual_quantity = fields.Float(
+        string="Actual Quantity",
+        compute="_compute_actual_quantity",
+        store=True,
+        readonly=True,
+    )
+
+    @api.depends("quantity", "wastage_percent")
+    def _compute_actual_quantity(self):
+        for line in self:
+            line.actual_quantity = line.quantity + (
+                line.quantity * line.wastage_percent / 100.0
+            )
+
+    @api.onchange("ingredient_product_id")
+    def _onchange_ingredient_product_id(self):
+        for line in self:
+            if line.ingredient_product_id:
+                line.uom_id = line.ingredient_product_id.uom_id
+
+    @api.constrains("quantity")
+    def _check_quantity(self):
+        for line in self:
+            if line.quantity <= 0:
+                raise ValidationError("Ingredient quantity must be greater than zero.")
+
+    @api.constrains("wastage_percent")
+    def _check_wastage_percent(self):
+        for line in self:
+            if line.wastage_percent < 0 or line.wastage_percent >= 100:
+                raise ValidationError("Wastage percentage must be between 0 and 99.")

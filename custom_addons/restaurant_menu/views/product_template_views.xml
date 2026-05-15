@@ -19,16 +19,50 @@
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Add-ons" name="restaurant_addons" invisible="not is_menu_item">
+
                     <field name="product_addon_group_ids" nolabel="1">
                         <list editable="bottom">
                             <field name="sequence" widget="handle" />
-                            <field name="addon_group_id" />
-                            <field name="required" />
-                            <field name="min_selection" />
-                            <field name="max_selection" />
-                            <field name="active" />
+                            <field name="addon_group_id" string="Add-on Group" />
+                            <field name="required" string="Required" />
+                            <field name="min_selection" string="Min" />
+                            <field name="max_selection" string="Max" />
+                            <field name="active" string="Active" />
                         </list>
+
+                        <form string="Product Add-on Group">
+                            <sheet>
+                                <group>
+                                    <group>
+                                        <field name="sequence" />
+                                        <field name="addon_group_id" />
+                                        <field name="required" />
+                                    </group>
+
+                                    <group>
+                                        <field name="min_selection" />
+                                        <field name="max_selection" />
+                                        <field name="active" />
+                                    </group>
+                                </group>
+
+                                <notebook>
+                                    <page string="Add-on Items">
+                                        <field name="addon_item_ids" nolabel="1" readonly="1">
+                                            <list>
+                                                <field name="name" />
+                                                <field name="additional_price" />
+                                                <field name="max_quantity" />
+                                                <field name="kitchen_note" />
+                                                <field name="active" />
+                                            </list>
+                                        </field>
+                                    </page>
+                                </notebook>
+                            </sheet>
+                        </form>
                     </field>
+
                 </page>
             </xpath>
         </field>

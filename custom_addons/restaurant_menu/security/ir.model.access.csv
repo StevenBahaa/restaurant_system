@@ -2,3 +2,4 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_restaurant_addon_group_user,restaurant.addon.group.user,model_restaurant_addon_group,base.group_user,1,1,1,1
 access_restaurant_addon_item_user,restaurant.addon.item.user,model_restaurant_addon_item,base.group_user,1,1,1,1
 access_restaurant_product_addon_group_user,restaurant.product.addon.group.user,model_restaurant_product_addon_group,base.group_user,1,1,1,1
+access_restaurant_addon_item_ingredient_user,restaurant.addon.item.ingredient.user,model_restaurant_addon_item_ingredient,base.group_user,1,1,1,1
