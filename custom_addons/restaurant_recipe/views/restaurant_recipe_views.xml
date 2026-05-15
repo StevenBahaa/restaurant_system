@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="restaurant_recipe_view_tree" model="ir.ui.view">
+        <field name="name">restaurant.recipe.view.list</field>
+        <field name="model">restaurant.recipe</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name" />
+                <field name="version" />
+                <field name="product_tmpl_id" />
+                <field name="total_cost" />
+                <field name="active" column_invisible="1" />
+                <field name="used_in_operations" readonly="1" />
+            </list>
+        </field>
+    </record>
+
+    <record id="restaurant_recipe_view_form" model="ir.ui.view">
+        <field name="name">restaurant.recipe.view.form</field>
+        <field name="model">restaurant.recipe</field>
+        <field name="arch" type="xml">
+            <form string="Recipe">
+                <header>
+                    <button name="action_approve"
+                        type="object"
+                        string="Approve"
+                        class="btn-primary"
+                        invisible="state != 'draft' or not active" />
+
+                    <button name="action_set_to_draft"
+                        type="object"
+                        string="Reset to Draft"
+                        invisible="state != 'approved' or not active" />
+
+                    <button name="action_create_new_version"
+                        type="object"
+                        string="Create New Version"
+                        invisible="state != 'approved' or not active" />
+
+                    <field name="state" widget="statusbar"
+                        statusbar_visible="draft,approved" invisible="not active" />
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="active" invisible="1" />
+                            <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                                invisible="active" />
+                            <field name="name" readonly="state == 'approved' or used_in_operations" />
+                            <field name="product_tmpl_id"
+                                readonly="state == 'approved' or used_in_operations" />
+                            <field name="version" readonly="1" />
+                            <field name="used_in_operations" readonly="1" />
+                        </group>
+                        <group>
+                            <field name="total_cost" readonly="1" />
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Ingredients">
+                            <field name="recipe_line_ids"
+                                readonly="state == 'approved' or used_in_operations">
+                                <list editable="bottom">
+                                    <field name="ingredient_product_id" />
+                                    <field name="quantity" />
+                                    <field name="uom_id" />
+                                    <field name="wastage_percent" />
+                                    <field name="actual_quantity" readonly="1" />
+                                    <field name="ingredient_cost" readonly="1" />
+                                    <field name="line_cost" readonly="1" />
+                                    <field name="notes" />
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="restaurant_recipe_view_search" model="ir.ui.view">
+        <field name="name">restaurant.recipe.view.search</field>
+        <field name="model">restaurant.recipe</field>
+        <field name="arch" type="xml">
+            <search string="Recipes">
+                <field name="name" />
+                <field name="version" />
+                <field name="product_tmpl_id" />
+                <field name="state" />
+
+                <filter name="approved"
+                    string="Approved"
+                    domain="[('state', '=', 'approved')]" />
+
+                <filter name="draft"
+                    string="Draft"
+                    domain="[('state', '=', 'draft')]" />
+
+                <separator />
+
+                <filter name="used_in_operations"
+                    string="Used in Operations"
+                    domain="[('used_in_operations', '=', True)]" />
+
+                <filter name="archived"
+                    string="Archived"
+                    domain="[('active', '=', False)]" />
+
+                <filter name="all_recipes"
+                    string="All Recipes"
+                    domain="['|', ('active', '=', True), ('active', '=', False)]" />
+            </search>
+        </field>
+    </record>
+
+    <record id="restaurant_recipe_action" model="ir.actions.act_window">
+        <field name="name">Recipes</field>
+        <field name="res_model">restaurant.recipe</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="restaurant_recipe_view_search" />
+        <field name="context">{'search_default_approved': 1}</field>
+    </record>
+
+    <menuitem id="restaurant_root_menu"
+        name="Restaurant ERP"
+        sequence="10" />
+
+    <menuitem id="restaurant_menu_configuration"
+        name="Configuration"
+        parent="restaurant_root_menu"
+        sequence="10" />
+
+    <menuitem id="restaurant_recipe_menu"
+        name="Recipes"
+        parent="restaurant_menu_configuration"
+        action="restaurant_recipe_action"
+        sequence="20" />
+</odoo>

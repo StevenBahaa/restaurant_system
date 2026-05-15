@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="product_template_form_view_restaurant_recipe" model="ir.ui.view">
+        <field name="name">product.template.form.restaurant.recipe</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view" />
+        <field name="arch" type="xml">
+
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_recipes"
+                    type="object"
+                    class="oe_stat_button"
+                    icon="fa-cutlery"
+                    invisible="not is_menu_item">
+                    <field name="recipe_count" widget="statinfo" string="Recipes" />
+                </button>
+            </xpath>
+
+            <xpath expr="//page[@name='general_information']//group" position="inside">
+                <group string="Recipe &amp; Costing" invisible="not is_menu_item">
+                    <field name="recipe_cost" readonly="1" />
+                    <field name="food_cost_percent" readonly="1" />
+                </group>
+            </xpath>
+
+            <xpath expr="//sheet/*[1]" position="before">
+                <field name="has_approved_recipe" invisible="1" />
+                <widget name="web_ribbon"
+                    title="Missing Approved Recipe"
+                    bg_color="text-bg-warning"
+                    invisible="not is_menu_item or restaurant_product_type != 'prepared_meal' or has_approved_recipe" />
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

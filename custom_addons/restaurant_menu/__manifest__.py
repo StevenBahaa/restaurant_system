@@ -14,9 +14,11 @@ Phase 1 - UC-01:
     "license": "LGPL-3",
     "depends": [
         "stock",
+        "point_of_sale"
     ],
     "data": [
         "views/product_template_views.xml",
+        "views/pos_category_views.xml",
     ],
     "installable": True,
     "application": False,

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="pos_category_form_view_restaurant_menu" model="ir.ui.view">
+        <field name="name">pos.category.form.restaurant.menu</field>
+        <field name="model">pos.category</field>
+        <field name="inherit_id" ref="point_of_sale.product_pos_category_form_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Restaurant Menu Configuration">
+                    <field name="is_restaurant_category" />
+                    <field name="show_in_pos" />
+                    <field name="available_from" />
+                    <field name="available_until" />
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
