@@ -7,6 +7,7 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name" />
+                <field name="version" />
                 <field name="product_tmpl_id" />
                 <field name="total_cost" />
                 <field name="active" column_invisible="1" />
@@ -31,6 +32,11 @@
                         string="Reset to Draft"
                         invisible="state != 'approved' or not active" />
 
+                    <button name="action_create_new_version"
+                        type="object"
+                        string="Create New Version"
+                        invisible="state != 'approved' or not active" />
+
                     <field name="state" widget="statusbar"
                         statusbar_visible="draft,approved" invisible="not active" />
                 </header>
@@ -42,6 +48,7 @@
                                 invisible="active" />
                             <field name="name" />
                             <field name="product_tmpl_id" />
+                            <field name="version" readonly="1" />
                         </group>
                         <group>
                             <field name="total_cost" readonly="1" />
@@ -75,6 +82,7 @@
         <field name="arch" type="xml">
             <search string="Recipes">
                 <field name="name" />
+                <field name="version" />
                 <field name="product_tmpl_id" />
                 <field name="state" />
 

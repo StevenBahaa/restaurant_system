@@ -66,8 +66,49 @@ class RestaurantRecipe(models.Model):
         help="Enable or disable this recipe.",
     )
 
+    version = fields.Integer(
+        string="Version",
+        readonly=True,
+        copy=False,
+    )   
+    display_name = fields.Char(
+        compute="_compute_display_name",
+        recursive=True,
+        store=False,
+    )   
+
+    effective_from = fields.Date(
+        string="Effective From",
+        default=fields.Date.context_today,
+        required=True,
+    )
+
+    used_in_operations = fields.Boolean(
+        string="Used in Operations",
+        default=False,
+        readonly=True,
+        help="Indicates whether this recipe was already used in operational transactions.",
+    )
+
+    @api.constrains("effective_from")
+    def _check_effective_from(self):
+        for recipe in self:
+            if not recipe.effective_from:
+                raise ValidationError("Effective From date is required.")
+    
     def action_approve(self):
         for recipe in self:
+            old_approved_recipes = self.search([
+                ("product_tmpl_id", "=", recipe.product_tmpl_id.id),
+                ("state", "=", "approved"),
+                ("active", "=", True),
+                ("id", "!=", recipe.id),
+            ])
+
+            old_approved_recipes.write({
+                "state": "draft",
+            })
+
             recipe.state = "approved"
 
     def action_set_to_draft(self):
@@ -78,6 +119,90 @@ class RestaurantRecipe(models.Model):
     def _compute_total_cost(self):
         for recipe in self:
             recipe.total_cost = sum(recipe.recipe_line_ids.mapped("line_cost"))
+
+    @api.constrains("product_tmpl_id", "state", "active")
+    def _check_single_approved_recipe_per_product(self):
+        for recipe in self:
+            if recipe.state != "approved" or not recipe.active:
+                continue
+
+            duplicate_approved_recipe = self.search([
+                ("product_tmpl_id", "=", recipe.product_tmpl_id.id),
+                ("state", "=", "approved"),
+                ("active", "=", True),
+                ("id", "!=", recipe.id),
+            ], limit=1)
+
+            if duplicate_approved_recipe:
+                raise ValidationError(
+                    "Only one approved recipe is allowed per menu item."
+                )
+
+    @api.depends("name", "version", "state")
+    def _compute_display_name(self):
+        for recipe in self:
+            version_text = f"V{recipe.version}" if recipe.version else "V?"
+
+            state_text = recipe.state.capitalize() if recipe.state else "Unknown"
+
+            recipe.display_name = (
+                f"{recipe.name} - {version_text} [{state_text}]"
+            )
+
+    def action_create_new_version(self):
+        self.ensure_one()
+
+        new_recipe = self.create({
+            "name": self.name,
+            "product_tmpl_id": self.product_tmpl_id.id,
+            "state": "draft",
+            "active": True,
+            "company_id": self.company_id.id,
+            "recipe_line_ids": [
+                (0, 0, {
+                    "ingredient_product_id": line.ingredient_product_id.id,
+                    "quantity": line.quantity,
+                    "uom_id": line.uom_id.id,
+                    "wastage_percent": line.wastage_percent,
+                    "notes": line.notes,
+                })
+                for line in self.recipe_line_ids
+            ],
+        })
+
+        return {
+            "type": "ir.actions.act_window",
+            "name": "New Recipe Version",
+            "res_model": "restaurant.recipe",
+            "res_id": new_recipe.id,
+            "view_mode": "form",
+            "target": "current",
+        }
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            product_id = vals.get("product_tmpl_id")
+
+            if product_id:
+                latest_recipe = self.search(
+                    [("product_tmpl_id", "=", product_id)],
+                    order="version desc",
+                    limit=1,
+                )
+
+                vals["version"] = (latest_recipe.version or 0) + 1 if latest_recipe else 1
+
+        return super().create(vals_list)
+
+    def unlink(self):
+        for recipe in self:
+            if recipe.used_in_operations:
+                raise ValidationError(
+                    "You cannot delete a recipe that was already used in operations. Archive it instead."
+                )
+
+        return super().unlink()
 
 
 
