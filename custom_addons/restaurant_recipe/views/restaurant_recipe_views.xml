@@ -24,25 +24,24 @@
                         type="object"
                         string="Approve"
                         class="btn-primary"
-                        invisible="state != 'draft'" />
+                        invisible="state != 'draft' or not active" />
 
                     <button name="action_set_to_draft"
                         type="object"
                         string="Reset to Draft"
-                        invisible="state != 'approved'" />
+                        invisible="state != 'approved' or not active" />
 
                     <field name="state" widget="statusbar"
-                        statusbar_visible="draft,approved" />
+                        statusbar_visible="draft,approved" invisible="not active" />
                 </header>
                 <sheet>
-                    <div class="alert alert-danger text-center" role="alert" invisible="active">
-                        <strong>This recipe is archived.</strong>
-                    </div>
                     <group>
                         <group>
+                            <field name="active" invisible="1" />
+                            <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                                invisible="active" />
                             <field name="name" />
                             <field name="product_tmpl_id" />
-                            <field name="active" invisible="1" />
                         </group>
                         <group>
                             <field name="total_cost" readonly="1" />
