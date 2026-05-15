@@ -28,3 +28,12 @@ class ProductTemplate(models.Model):
         default="prepared_meal",
         help="Operational restaurant classification used for menu, kitchen, recipe, inventory, and reporting workflows.",
     )
+
+    addon_group_ids = fields.Many2many(
+        comodel_name="restaurant.addon.group",
+        relation="product_template_restaurant_addon_group_rel",
+        column1="product_tmpl_id",
+        column2="addon_group_id",
+        string="Add-on Groups",
+        help="Add-on groups available for this menu item.",
+    )
