@@ -73,10 +73,6 @@ class RestaurantRecipe(models.Model):
     def action_set_to_draft(self):
         for recipe in self:
             recipe.state = "draft"
-    
-    def action_archive_recipe(self):
-        for recipe in self:
-            recipe.active = False
 
     @api.depends("recipe_line_ids", "recipe_line_ids.line_cost")
     def _compute_total_cost(self):

@@ -31,15 +31,13 @@
                         string="Reset to Draft"
                         invisible="state != 'approved'" />
 
-                    <button name="action_archive_recipe"
-                        type="object"
-                        string="Archive"
-                        invisible="not active" />
-
                     <field name="state" widget="statusbar"
                         statusbar_visible="draft,approved" />
                 </header>
                 <sheet>
+                    <div class="alert alert-danger text-center" role="alert" invisible="active">
+                        <strong>This recipe is archived.</strong>
+                    </div>
                     <group>
                         <group>
                             <field name="name" />
@@ -72,10 +70,42 @@
         </field>
     </record>
 
+    <record id="restaurant_recipe_view_search" model="ir.ui.view">
+        <field name="name">restaurant.recipe.view.search</field>
+        <field name="model">restaurant.recipe</field>
+        <field name="arch" type="xml">
+            <search string="Recipes">
+                <field name="name" />
+                <field name="product_tmpl_id" />
+                <field name="state" />
+
+                <filter name="approved"
+                    string="Approved"
+                    domain="[('state', '=', 'approved')]" />
+
+                <filter name="draft"
+                    string="Draft"
+                    domain="[('state', '=', 'draft')]" />
+
+                <separator />
+
+                <filter name="archived"
+                    string="Archived"
+                    domain="[('active', '=', False)]" />
+
+                <filter name="all_recipes"
+                    string="All Recipes"
+                    domain="['|', ('active', '=', True), ('active', '=', False)]" />
+            </search>
+        </field>
+    </record>
+
     <record id="restaurant_recipe_action" model="ir.actions.act_window">
         <field name="name">Recipes</field>
         <field name="res_model">restaurant.recipe</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="restaurant_recipe_view_search" />
+        <field name="context">{'search_default_approved': 1}</field>
     </record>
 
     <menuitem id="restaurant_root_menu"
