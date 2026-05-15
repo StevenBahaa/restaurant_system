@@ -14,48 +14,11 @@ class RestaurantAddonGroup(models.Model):
         default=True,
     )
 
-    mandatory = fields.Boolean(
-        string="Mandatory Selection",
-        default=False,
-    )
-
-    min_selection = fields.Integer(
-        string="Minimum Selection",
-        default=0,
-    )
-
-    max_selection = fields.Integer(
-        string="Maximum Selection",
-        default=1,
-    )
-
     addon_item_ids = fields.One2many(
         comodel_name="restaurant.addon.item",
         inverse_name="addon_group_id",
         string="Add-ons",
     )
-
-    @api.constrains("min_selection", "max_selection")
-    def _check_selection_limits(self):
-        for group in self:
-            if group.min_selection < 0:
-                raise ValidationError("Minimum selection cannot be negative.")
-
-            if group.max_selection < 0:
-                raise ValidationError("Maximum selection cannot be negative.")
-
-            if group.max_selection and group.min_selection > group.max_selection:
-                raise ValidationError(
-                    "Minimum selection cannot be greater than maximum selection."
-                )
-
-    @api.constrains("mandatory", "min_selection")
-    def _check_mandatory_selection(self):
-        for group in self:
-            if group.mandatory and group.min_selection <= 0:
-                raise ValidationError(
-                    "Mandatory add-on groups must require at least one selection."
-                )   
 
     @api.constrains("addon_item_ids", "active")
     def _check_active_addon_items(self):
@@ -146,13 +109,8 @@ class RestaurantProductAddonGroup(models.Model):
         ondelete="restrict",
     )
 
-    required_override = fields.Boolean(
-        string="Required Override",
-        help="Override default mandatory behavior for this menu item.",
-    )
-
-    override_selection_rules = fields.Boolean(
-        string="Override Selection Rules",
+    required = fields.Boolean(
+        string="Required",
         default=False,
     )
 
@@ -166,54 +124,9 @@ class RestaurantProductAddonGroup(models.Model):
         default=1,
     )
 
-    effective_mandatory = fields.Boolean(
-        string="Effective Mandatory",
-        compute="_compute_effective_rules",
-        store=True,
-    )
-
-    effective_min_selection = fields.Integer(
-        string="Effective Minimum Selection",
-        compute="_compute_effective_rules",
-        store=True,
-    )
-
-    effective_max_selection = fields.Integer(
-        string="Effective Maximum Selection",
-        compute="_compute_effective_rules",
-        store=True,
-    )
-
-    @api.depends(
-        "required_override",
-        "override_selection_rules",
-        "min_selection",
-        "max_selection",
-        "addon_group_id.mandatory",
-        "addon_group_id.min_selection",
-        "addon_group_id.max_selection",
-    )
-    def _compute_effective_rules(self):
+    @api.constrains("required", "min_selection", "max_selection")
+    def _check_selection_rules(self):
         for record in self:
-            record.effective_mandatory = (
-                record.required_override
-                if record.required_override
-                else record.addon_group_id.mandatory
-            )
-
-            if record.override_selection_rules:
-                record.effective_min_selection = record.min_selection
-                record.effective_max_selection = record.max_selection
-            else:
-                record.effective_min_selection = record.addon_group_id.min_selection
-                record.effective_max_selection = record.addon_group_id.max_selection
-
-    @api.constrains("override_selection_rules", "min_selection", "max_selection")
-    def _check_product_selection_limits(self):
-        for record in self:
-            if not record.override_selection_rules:
-                continue
-
             if record.min_selection < 0:
                 raise ValidationError("Minimum selection cannot be negative.")
 
@@ -223,6 +136,16 @@ class RestaurantProductAddonGroup(models.Model):
             if record.max_selection and record.min_selection > record.max_selection:
                 raise ValidationError(
                     "Minimum selection cannot be greater than maximum selection."
+                )
+
+            if record.required and record.min_selection <= 0:
+                raise ValidationError(
+                    "Required add-on groups must have a minimum selection greater than zero."
+                )
+
+            if not record.required and record.min_selection > 0:
+                raise ValidationError(
+                    "Optional add-on groups must have a minimum selection of zero."
                 )
 
     @api.constrains("product_tmpl_id", "addon_group_id")

@@ -7,9 +7,6 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name" />
-                <field name="mandatory" />
-                <field name="min_selection" />
-                <field name="max_selection" />
                 <field name="active" />
             </list>
         </field>
@@ -22,15 +19,8 @@
             <form string="Add-on Group">
                 <sheet>
                     <group>
-                        <group>
-                            <field name="name" />
-                            <field name="active" />
-                        </group>
-                        <group>
-                            <field name="mandatory" />
-                            <field name="min_selection" />
-                            <field name="max_selection" />
-                        </group>
+                        <field name="name" />
+                        <field name="active" invisible="1" />
                     </group>
 
                     <notebook>

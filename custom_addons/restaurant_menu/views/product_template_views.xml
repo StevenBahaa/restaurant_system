@@ -19,23 +19,16 @@
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Add-ons" name="restaurant_addons" invisible="not is_menu_item">
-
-                    <group string="Add-on Groups">
-                        <field name="product_addon_group_ids" nolabel="1">
-                            <list editable="bottom">
-                                <field name="sequence" widget="handle" />
-                                <field name="addon_group_id" />
-                                <field name="required_override" />
-                                <field name="override_selection_rules" />
-                                <field name="min_selection"
-                                    invisible="not override_selection_rules" />
-                                <field name="max_selection"
-                                    invisible="not override_selection_rules" />
-                                <field name="active" />
-                            </list>
-                        </field>
-                    </group>
-
+                    <field name="product_addon_group_ids" nolabel="1">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle" />
+                            <field name="addon_group_id" />
+                            <field name="required" />
+                            <field name="min_selection" />
+                            <field name="max_selection" />
+                            <field name="active" />
+                        </list>
+                    </field>
                 </page>
             </xpath>
         </field>
