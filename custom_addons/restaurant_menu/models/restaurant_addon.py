@@ -37,10 +37,21 @@ class RestaurantAddonItem(models.Model):
     _name = "restaurant.addon.item"
     _description = "Restaurant Add-on Item"
 
+    product_tmpl_id = fields.Many2one(
+        comodel_name="product.template",
+        string="Add-on Product",
+        required=True,
+        domain=[
+           ("restaurant_product_type", "in", ["ready_item", "beverage", "prepared_meal"]),
+        ],
+    )
+
     name = fields.Char(
         string="Add-on Name",
-        required=True,
-    )
+        related="product_tmpl_id.name",
+        store=True,
+        readonly=True,
+    )   
 
     addon_group_id = fields.Many2one(
         comodel_name="restaurant.addon.group",
@@ -73,6 +84,18 @@ class RestaurantAddonItem(models.Model):
         string="Ingredient Consumption",
     )   
 
+    addon_cost = fields.Float(
+        string="Add-on Cost",
+        compute="_compute_addon_cost",
+        store=True,
+        readonly=True,
+    )
+
+    @api.depends("ingredient_line_ids.line_cost")
+    def _compute_addon_cost(self):
+        for item in self:
+            item.addon_cost = sum(item.ingredient_line_ids.mapped("line_cost")) 
+
     @api.constrains("max_quantity")
     def _check_max_quantity(self):
         for addon in self:
@@ -84,6 +107,20 @@ class RestaurantAddonItem(models.Model):
         for addon in self:
             if addon.additional_price < 0:
                 raise ValidationError("Additional price cannot be negative.")
+
+    @api.constrains("addon_group_id", "product_tmpl_id")
+    def _check_unique_product_per_group(self):
+        for item in self:
+            duplicate = self.search([
+                ("addon_group_id", "=", item.addon_group_id.id),
+                ("product_tmpl_id", "=", item.product_tmpl_id.id),
+                ("id", "!=", item.id),
+            ], limit=1)
+
+            if duplicate:
+                raise ValidationError(
+                    "This add-on product is already added to this add-on group."
+                )
 
 class RestaurantProductAddonGroup(models.Model):
     _name = "restaurant.product.addon.group"
@@ -217,6 +254,31 @@ class RestaurantAddonItemIngredient(models.Model):
         store=True,
         readonly=True,
     )
+
+    ingredient_cost = fields.Float(
+        string="Ingredient Cost",
+        compute="_compute_ingredient_cost",
+        store=True,
+        readonly=True,
+    )
+
+    line_cost = fields.Float(
+        string="Line Cost",
+        compute="_compute_line_cost",
+        store=True,
+        readonly=True,
+    )   
+
+    @api.depends("ingredient_product_id")
+    def _compute_ingredient_cost(self):
+        for line in self:
+            line.ingredient_cost = line.ingredient_product_id.standard_price or 0.0
+
+
+    @api.depends("actual_quantity", "ingredient_cost")
+    def _compute_line_cost(self):
+        for line in self:
+            line.line_cost = line.actual_quantity * line.ingredient_cost  
 
     @api.depends("quantity", "wastage_percent")
     def _compute_actual_quantity(self):

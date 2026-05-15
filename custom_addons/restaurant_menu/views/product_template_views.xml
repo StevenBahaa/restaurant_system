@@ -19,9 +19,8 @@
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Add-ons" name="restaurant_addons" invisible="not is_menu_item">
-
                     <field name="product_addon_group_ids" nolabel="1">
-                        <list editable="bottom">
+                        <list>
                             <field name="sequence" widget="handle" />
                             <field name="addon_group_id" string="Add-on Group" />
                             <field name="required" string="Required" />
@@ -48,9 +47,12 @@
 
                                 <notebook>
                                     <page string="Add-on Items">
+                                        <h2>
+                                            <field name="addon_group_id" readonly="1" />
+                                        </h2>
                                         <field name="addon_item_ids" nolabel="1" readonly="1">
-                                            <list>
-                                                <field name="name" />
+                                            <list create="0" delete="0" edit="0">
+                                                <field name="product_tmpl_id" />
                                                 <field name="additional_price" />
                                                 <field name="max_quantity" />
                                                 <field name="kitchen_note" />
