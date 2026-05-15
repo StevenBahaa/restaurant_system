@@ -29,6 +29,25 @@ class ProductTemplate(models.Model):
         store=True,
     )
 
+    has_approved_recipe = fields.Boolean(
+        string="Has Approved Recipe",
+        compute="_compute_has_approved_recipe",
+        store=True,
+    )
+
+    @api.depends(
+        "recipe_ids",
+        "recipe_ids.state",
+        "recipe_ids.active",
+        )
+    def _compute_has_approved_recipe(self):
+        for product in self:
+            product.has_approved_recipe = bool(
+                product.recipe_ids.filtered(
+                    lambda recipe: recipe.active and recipe.state == "approved"
+                )
+            )
+
     @api.depends("recipe_ids")
     def _compute_recipe_count(self):
         for product in self:

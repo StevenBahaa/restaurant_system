@@ -23,6 +23,14 @@
                 </group>
             </xpath>
 
+            <xpath expr="//sheet/*[1]" position="before">
+                <field name="has_approved_recipe" invisible="1" />
+                <widget name="web_ribbon"
+                    title="Missing Approved Recipe"
+                    bg_color="text-bg-warning"
+                    invisible="not is_menu_item or restaurant_product_type != 'prepared_meal' or has_approved_recipe" />
+            </xpath>
+
         </field>
     </record>
 </odoo>
