@@ -204,6 +204,22 @@ class RestaurantRecipe(models.Model):
 
         return super().unlink()
 
+    def write(self, vals):
+        protected_fields = {
+            "name",
+            "product_tmpl_id",
+            "recipe_line_ids",
+        }
+
+        for recipe in self:
+            if recipe.state == "approved" or recipe.used_in_operations:
+                if protected_fields.intersection(vals.keys()):
+                    raise ValidationError(
+                        "You cannot modify an approved or operationally used recipe. Create a new version instead."
+                    )
+
+        return super().write(vals)
+
 
 
 class RestaurantRecipeLine(models.Model):
@@ -316,6 +332,42 @@ class RestaurantRecipeLine(models.Model):
         for line in self:
             if line.ingredient_product_id:
                 line.uom_id = line.ingredient_product_id.uom_id
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        recipe_ids = [
+            vals.get("recipe_id")
+            for vals in vals_list
+            if vals.get("recipe_id")
+        ]
+
+        recipes = self.env["restaurant.recipe"].browse(recipe_ids)
+
+        for recipe in recipes:
+            if recipe.state == "approved" or recipe.used_in_operations:
+                raise ValidationError(
+                    "You cannot add recipe lines to an approved or operationally used recipe. Create a new version instead."
+                )
+
+        return super().create(vals_list)
+
+    def write(self, vals):
+        for line in self:
+            if line.recipe_id.state == "approved" or line.recipe_id.used_in_operations:
+                raise ValidationError(
+                    "You cannot modify recipe lines for an approved or operationally used recipe. Create a new version instead."
+                )
+
+        return super().write(vals)
+
+    def unlink(self):
+        for line in self:
+            if line.recipe_id.state == "approved" or line.recipe_id.used_in_operations:
+                raise ValidationError(
+                    "You cannot delete recipe lines from an approved or operationally used recipe. Create a new version instead."
+                )
+
+        return super().unlink()
 
     
     
