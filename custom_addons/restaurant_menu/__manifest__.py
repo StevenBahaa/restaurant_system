@@ -13,6 +13,7 @@ Phase 1 - UC-01:
     "author": "Steven Bahaa",
     "license": "LGPL-3",
     "depends": [
+        "restaurant_base",
         "stock",
         "point_of_sale"
     ],

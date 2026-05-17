@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Root Menu -->
+    <menuitem id="restaurant_root_menu"
+        name="Restaurant ERP"
+        sequence="10" />
+
+    <!-- Top-level Menus -->
+    <menuitem id="restaurant_products_menu"
+        name="Products"
+        parent="restaurant_root_menu"
+        action="product.product_template_action"
+        sequence="10" />
+
+    <menuitem id="restaurant_menu_configuration"
+        name="Configuration"
+        parent="restaurant_root_menu"
+        sequence="100" />
+</odoo>

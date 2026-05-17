@@ -88,7 +88,7 @@
 
     <menuitem id="restaurant_addon_group_menu"
         name="Add-on Groups"
-        parent="restaurant_recipe.restaurant_menu_configuration"
+        parent="restaurant_base.restaurant_menu_configuration"
         action="restaurant_addon_group_action"
         sequence="30" />
 
