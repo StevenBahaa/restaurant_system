@@ -19,20 +19,22 @@
             <form string="Add-on Group">
                 <sheet>
                     <group>
-                        <field name="name" />
+                        <field name="name" readonly="used_in_operations" />
                         <field name="active" />
+                        <field name="used_in_operations" readonly="1" />
                     </group>
 
                     <notebook>
                         <page string="Add-ons">
                             <field name="addon_item_ids">
                                 <list>
-                                    <field name="product_tmpl_id" />
-                                    <field name="additional_price" />
+                                    <field name="product_tmpl_id" readonly="used_in_operations" />
+                                    <field name="additional_price" readonly="used_in_operations" />
                                     <field name="addon_cost" readonly="1" />
-                                    <field name="max_quantity" />
-                                    <field name="kitchen_note" />
+                                    <field name="max_quantity" readonly="used_in_operations" />
+                                    <field name="kitchen_note" readonly="used_in_operations" />
                                     <field name="active" />
+                                    <field name="used_in_operations" readonly="1" />
                                 </list>
 
                                 <form string="Add-on Item">
@@ -48,12 +50,14 @@
                                                 <field name="max_quantity" />
                                                 <field name="kitchen_note" />
                                                 <field name="active" />
+                                                <field name="used_in_operations" readonly="1" />
                                             </group>
                                         </group>
 
                                         <notebook>
                                             <page string="Ingredient Consumption">
-                                                <field name="ingredient_line_ids">
+                                                <field name="ingredient_line_ids"
+                                                    readonly="used_in_operations">
                                                     <list editable="bottom">
                                                         <field name="ingredient_product_id" />
                                                         <field name="quantity" />

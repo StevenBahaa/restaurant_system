@@ -22,7 +22,8 @@
                     <field name="product_addon_group_ids" nolabel="1">
                         <list>
                             <field name="sequence" widget="handle" />
-                            <field name="addon_group_id" string="Add-on Group" />
+                            <field name="addon_group_id" string="Add-on Group"
+                                readonly="used_in_operations" />
                             <field name="required" string="Required" />
                             <field name="min_selection" string="Min" />
                             <field name="max_selection" string="Max" />
@@ -34,7 +35,7 @@
                                 <group>
                                     <group>
                                         <field name="sequence" />
-                                        <field name="addon_group_id" />
+                                        <field name="addon_group_id" readonly="used_in_operations" />
                                         <field name="required" />
                                     </group>
 

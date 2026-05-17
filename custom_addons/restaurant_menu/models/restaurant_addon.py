@@ -20,6 +20,33 @@ class RestaurantAddonGroup(models.Model):
         string="Add-ons",
     )
 
+    used_in_operations = fields.Boolean(
+        string="Used in Operations",
+        default=False,
+        readonly=True,
+    )
+
+    def unlink(self):
+        for group in self:
+            if group.used_in_operations:
+                raise ValidationError(
+                    "You cannot delete an add-on group that was already used in operations. Archive it instead."
+                )
+        return super().unlink()
+
+    def write(self, vals):
+        protected_fields = {
+            "name",
+            "addon_item_ids",
+        }
+
+        for group in self:
+            if group.used_in_operations and protected_fields.intersection(vals.keys()):
+                raise ValidationError(
+                    "You cannot modify an add-on group that was already used in operations. Archive it instead."
+                )
+
+        return super().write(vals)
     @api.constrains("addon_item_ids", "active")
     def _check_active_addon_items(self):
         for group in self:
@@ -90,6 +117,37 @@ class RestaurantAddonItem(models.Model):
         store=True,
         readonly=True,
     )
+
+    used_in_operations = fields.Boolean(
+        string="Used in Operations",
+        default=False,
+        readonly=True,
+    )
+
+    def unlink(self):
+        for item in self:
+            if item.used_in_operations:
+                raise ValidationError(
+                    "You cannot delete an add-on item that was already used in operations. Archive it instead."
+                )
+        return super().unlink() 
+
+    def write(self, vals):
+        protected_fields = {
+            "product_tmpl_id",
+            "additional_price",
+            "max_quantity",
+            "kitchen_note",
+            "ingredient_line_ids",
+        }
+
+        for item in self:
+            if item.used_in_operations and protected_fields.intersection(vals.keys()):
+                raise ValidationError(
+                    "You cannot modify an add-on item that was already used in operations. Archive it instead."
+                )
+
+        return super().write(vals)
 
     @api.depends("ingredient_line_ids.line_cost")
     def _compute_addon_cost(self):
@@ -172,6 +230,36 @@ class RestaurantProductAddonGroup(models.Model):
         string="Maximum Selection",
         default=1,
     )
+
+    used_in_operations = fields.Boolean(
+        string="Used in Operations",
+        default=False,
+        readonly=True,
+    )
+
+    def unlink(self):
+        for record in self:
+            if record.used_in_operations:
+                raise ValidationError(
+                    "You cannot delete a product add-on configuration that was already used in operations. Disable it instead."
+                )
+
+        return super().unlink()
+
+
+    def write(self, vals):
+        protected_fields = {
+            "product_tmpl_id",
+            "addon_group_id",
+        }
+
+        for record in self:
+            if record.used_in_operations and protected_fields.intersection(vals.keys()):
+                raise ValidationError(
+                    "You cannot change the product or add-on group for a configuration that was already used in operations. Disable it and create a new configuration instead."
+                )
+
+        return super().write(vals)
 
     @api.constrains("required", "min_selection", "max_selection")
     def _check_selection_rules(self):
@@ -304,3 +392,22 @@ class RestaurantAddonItemIngredient(models.Model):
         for line in self:
             if line.wastage_percent < 0 or line.wastage_percent >= 100:
                 raise ValidationError("Wastage percentage must be between 0 and 99.")
+
+    def write(self, vals):
+        for line in self:
+            if line.addon_item_id.used_in_operations:
+                raise ValidationError(
+                    "You cannot modify ingredient consumption for an add-on item already used in operations."
+                )
+
+        return super().write(vals)
+
+
+    def unlink(self):
+        for line in self:
+            if line.addon_item_id.used_in_operations:
+                raise ValidationError(
+                    "You cannot delete ingredient consumption for an add-on item already used in operations."
+                )
+
+        return super().unlink()
