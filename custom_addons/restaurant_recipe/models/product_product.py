@@ -30,6 +30,13 @@ class ProductProduct(models.Model):
         readonly=True,
     )
 
+    variant_food_cost_percent = fields.Float(
+        string="Variant Food Cost %",
+        compute="_compute_variant_food_cost_percent",
+        store=True,
+        readonly=True,
+    )   
+
     @api.depends("variant_recipe_line_ids.line_cost")
     def _compute_variant_recipe_cost(self):
         for product in self:
@@ -78,6 +85,16 @@ class ProductProduct(models.Model):
                 - overridden_template_cost
                 + product.variant_recipe_cost
             )
+
+    @api.depends("final_recipe_cost", "lst_price")
+    def _compute_variant_food_cost_percent(self):
+        for product in self:
+            if product.lst_price:
+                product.variant_food_cost_percent = (
+                    product.final_recipe_cost / product.lst_price
+                ) * 100
+            else:
+                product.variant_food_cost_percent = 0.0
     
 class RestaurantVariantRecipeLine(models.Model):
     _name = "restaurant.variant.recipe.line"

@@ -10,7 +10,8 @@
                 <group>
                     <field name="has_variant_recipe_override" readonly="1" />
                     <field name="variant_recipe_cost" readonly="1" />
-                        <field name="final_recipe_cost" readonly="1" />
+                    <field name="final_recipe_cost" readonly="1" />
+                    <field name="variant_food_cost_percent" readonly="1" />
                 </group>
 
                 <field name="variant_recipe_line_ids">
