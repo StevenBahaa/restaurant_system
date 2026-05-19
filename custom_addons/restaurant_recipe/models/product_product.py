@@ -37,6 +37,20 @@ class ProductProduct(models.Model):
         readonly=True,
     )   
 
+    variant_preparation_time = fields.Integer(
+        string="Variant Preparation Time",
+        help="Preparation time in minutes for this variant. If empty, the menu item default preparation time will be used later.",
+    )
+
+    variant_available_in_pos = fields.Boolean(
+        string="Available in POS",
+        default=True,
+    )
+
+    variant_unavailable_reason = fields.Char(
+        string="Unavailable Reason",
+    )
+
     @api.depends("variant_recipe_line_ids.line_cost")
     def _compute_variant_recipe_cost(self):
         for product in self:
@@ -85,6 +99,13 @@ class ProductProduct(models.Model):
                 - overridden_template_cost
                 + product.variant_recipe_cost
             )
+    @api.constrains("variant_preparation_time")
+    def _check_variant_preparation_time(self):
+        for product in self:
+            if product.variant_preparation_time < 0:
+                raise ValidationError(
+                    "Variant preparation time cannot be negative."
+                )   
 
     @api.depends("final_recipe_cost", "lst_price")
     def _compute_variant_food_cost_percent(self):
@@ -110,6 +131,19 @@ class ProductProduct(models.Model):
             ):
                 raise ValidationError(
                     "Variant sales price cannot be lower than its final recipe cost."
+                )
+    @api.constrains(
+        "variant_available_in_pos",
+        "variant_unavailable_reason",
+    )
+    def _check_variant_unavailable_reason(self):
+        for product in self:
+            if (
+                not product.variant_available_in_pos
+                and not product.variant_unavailable_reason
+            ):
+                raise ValidationError(
+                    "Please provide a reason when the variant is unavailable."
                 )
     
 class RestaurantVariantRecipeLine(models.Model):

@@ -14,6 +14,14 @@
                             <field name="final_recipe_cost" readonly="1" />
                             <field name="variant_food_cost_percent" readonly="1" />
                         </group>
+                        <group>
+                            <field name="variant_preparation_time" />
+                        </group>
+                        <group string="Availability">
+                            <field name="variant_available_in_pos" />
+                            <field name="variant_unavailable_reason"
+                                invisible="variant_available_in_pos" />
+                        </group>
                     </group>
 
                     <field name="variant_recipe_line_ids">
