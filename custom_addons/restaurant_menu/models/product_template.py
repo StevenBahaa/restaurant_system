@@ -28,3 +28,9 @@ class ProductTemplate(models.Model):
         default="prepared_meal",
         help="Operational restaurant classification used for menu, kitchen, recipe, inventory, and reporting workflows.",
     )
+
+    product_addon_group_ids = fields.One2many(
+        comodel_name="restaurant.product.addon.group",
+        inverse_name="product_tmpl_id",
+        string="Add-on Groups",
+    )   

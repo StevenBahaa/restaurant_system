@@ -6,6 +6,7 @@
     "author": "Steven Bahaa",
     "license": "LGPL-3",
     "depends": [
+        "restaurant_base",
         "restaurant_menu",
         "uom",
     ],
