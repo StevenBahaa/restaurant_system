@@ -96,6 +96,22 @@ class ProductProduct(models.Model):
             else:
                 product.variant_food_cost_percent = 0.0
     
+    @api.constrains(
+        "lst_price",
+        "final_recipe_cost",
+        "product_tmpl_id",
+    )
+    def _check_variant_price_above_recipe_cost(self):
+        for product in self:
+            if (
+                product.product_tmpl_id.is_menu_item
+                and product.final_recipe_cost > 0
+                and product.lst_price < product.final_recipe_cost
+            ):
+                raise ValidationError(
+                    "Variant sales price cannot be lower than its final recipe cost."
+                )
+    
 class RestaurantVariantRecipeLine(models.Model):
     _name = "restaurant.variant.recipe.line"
     _description = "Restaurant Variant Recipe Line"
