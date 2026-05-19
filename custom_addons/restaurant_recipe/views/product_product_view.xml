@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="product_product_form_view_restaurant_recipe" model="ir.ui.view">
+        <field name="name">product.product.form.restaurant.recipe</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_variant_easy_edit_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+
+                <group>
+                    <field name="has_variant_recipe_override" readonly="1" />
+                    <field name="variant_recipe_cost" readonly="1" />
+                        <field name="final_recipe_cost" readonly="1" />
+                </group>
+
+                <field name="variant_recipe_line_ids">
+                    <list editable="bottom">
+                        <field name="ingredient_product_id" />
+                        <field name="quantity" />
+                        <field name="uom_id" />
+                        <field name="wastage_percent" />
+                        <field name="actual_quantity" readonly="1" />
+                        <field name="ingredient_cost" readonly="1" />
+                        <field name="line_cost" readonly="1" />
+                        <field name="notes" />
+                    </list>
+                </field>
+
+            </xpath>
+        </field>
+    </record>
+</odoo>

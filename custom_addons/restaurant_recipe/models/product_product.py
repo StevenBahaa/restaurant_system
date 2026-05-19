@@ -23,6 +23,13 @@ class ProductProduct(models.Model):
         store=True,
     )
 
+    final_recipe_cost = fields.Float(
+        string="Final Recipe Cost",
+        compute="_compute_final_recipe_cost",
+        store=True,
+        readonly=True,
+    )
+
     @api.depends("variant_recipe_line_ids.line_cost")
     def _compute_variant_recipe_cost(self):
         for product in self:
@@ -33,6 +40,44 @@ class ProductProduct(models.Model):
         for product in self:
             product.has_variant_recipe_override = bool(product.variant_recipe_line_ids)
 
+    @api.depends(
+        "variant_recipe_line_ids",
+        "variant_recipe_line_ids.ingredient_product_id",
+        "variant_recipe_line_ids.line_cost",
+        "product_tmpl_id.recipe_ids",
+        "product_tmpl_id.recipe_ids.state",
+        "product_tmpl_id.recipe_ids.active",
+        "product_tmpl_id.recipe_ids.recipe_line_ids",
+        "product_tmpl_id.recipe_ids.recipe_line_ids.ingredient_product_id",
+        "product_tmpl_id.recipe_ids.recipe_line_ids.line_cost",
+    )
+    def _compute_final_recipe_cost(self):
+        for product in self:
+            approved_recipe = product.product_tmpl_id.recipe_ids.filtered(
+                lambda recipe: recipe.active and recipe.state == "approved"
+            )[:1]
+
+            if not approved_recipe:
+                product.final_recipe_cost = product.variant_recipe_cost
+                continue
+
+            template_cost = approved_recipe.total_cost
+
+            overridden_ingredient_ids = product.variant_recipe_line_ids.mapped(
+                "ingredient_product_id"
+            ).ids
+
+            overridden_template_lines = approved_recipe.recipe_line_ids.filtered(
+                lambda line: line.ingredient_product_id.id in overridden_ingredient_ids
+            )
+
+            overridden_template_cost = sum(overridden_template_lines.mapped("line_cost"))
+
+            product.final_recipe_cost = (
+                template_cost
+                - overridden_template_cost
+                + product.variant_recipe_cost
+            )
     
 class RestaurantVariantRecipeLine(models.Model):
     _name = "restaurant.variant.recipe.line"

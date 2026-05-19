@@ -14,6 +14,7 @@
         "security/ir.model.access.csv",
         "views/restaurant_recipe_views.xml",
         "views/product_template_views.xml",
+        "views/product_product_view.xml",
     ],
     "installable": True,
     "application": False,
