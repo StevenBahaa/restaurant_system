@@ -67,6 +67,33 @@
                     </field>
 
                 </page>
+
+                <page string="Combo Components"
+                    invisible="restaurant_product_type != 'combo'">
+                    <group>
+                        <group>
+                            <field name="combo_component_count" readonly="1" />
+                            <field name="combo_individual_total_price" readonly="1" />
+                            <field name="combo_saving_amount" readonly="1" />
+                        </group>
+                    </group>
+
+                    <field name="combo_component_line_ids">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle" />
+                            <field name="component_product_tmpl_id" />
+                            <field name="quantity" />
+                            <field name="allow_customization" />
+                            <field name="is_swappable" />
+                            <field name="allowed_substitute_product_ids" widget="many2many_tags"
+                                column_invisible="not is_swappable" />
+                            <field name="is_upgradeable" />
+                            <field name="upgrade_price"
+                                column_invisible="not is_upgradeable" />
+                            <field name="notes" />
+                        </list>
+                    </field>
+                </page>
             </xpath>
         </field>
     </record>

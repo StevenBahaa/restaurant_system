@@ -3,3 +3,4 @@ access_restaurant_addon_group_user,restaurant.addon.group.user,model_restaurant_
 access_restaurant_addon_item_user,restaurant.addon.item.user,model_restaurant_addon_item,base.group_user,1,1,1,1
 access_restaurant_product_addon_group_user,restaurant.product.addon.group.user,model_restaurant_product_addon_group,base.group_user,1,1,1,1
 access_restaurant_addon_item_ingredient_user,restaurant.addon.item.ingredient.user,model_restaurant_addon_item_ingredient,base.group_user,1,1,1,1
+access_restaurant_combo_line_user,access.restaurant.combo.line.user,model_restaurant_combo_line,base.group_user,1,1,1,1
