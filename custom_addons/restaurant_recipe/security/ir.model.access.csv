@@ -1,3 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_restaurant_recipe_user,restaurant.recipe.user,model_restaurant_recipe,base.group_user,1,1,1,1
 access_restaurant_recipe_line_user,restaurant.recipe.line.user,model_restaurant_recipe_line,base.group_user,1,1,1,1
+access_restaurant_variant_recipe_line_user,restaurant.variant.recipe.line.user,model_restaurant_variant_recipe_line,base.group_user,1,1,1,1

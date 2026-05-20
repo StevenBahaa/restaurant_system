@@ -1,4 +1,3 @@
-from email.policy import default
 from odoo import models, fields, api
 
 class ProductTemplate(models.Model):
@@ -34,3 +33,46 @@ class ProductTemplate(models.Model):
         inverse_name="product_tmpl_id",
         string="Add-on Groups",
     )   
+
+    @api.onchange("restaurant_product_type")
+    def _onchange_restaurant_product_type(self):
+        for product in self:
+            if product.restaurant_product_type == "prepared_meal":
+                product.sale_ok = True
+                product.purchase_ok = False
+                product.available_in_pos = True
+                product.is_menu_item = True
+                product.is_storable = False
+
+            elif product.restaurant_product_type == "ingredient":
+                product.sale_ok = False
+                product.purchase_ok = True
+                product.available_in_pos = False
+                product.is_menu_item = False
+                product.is_storable = True
+
+            elif product.restaurant_product_type == "packaging":
+                product.sale_ok = False
+                product.purchase_ok = True
+                product.available_in_pos = False
+                product.is_menu_item = False
+                product.is_storable = True
+
+            elif product.restaurant_product_type == "semi_finished":
+                product.sale_ok = False
+                product.purchase_ok = False
+                product.available_in_pos = False
+                product.is_menu_item = False
+                product.is_storable = True
+
+            elif product.restaurant_product_type == "beverage":
+                product.sale_ok = True
+                product.purchase_ok = True
+                product.available_in_pos = True
+                product.is_menu_item = True
+
+            elif product.restaurant_product_type == "ready_item":
+                product.sale_ok = True
+                product.purchase_ok = True
+                product.available_in_pos = True
+                product.is_menu_item = True

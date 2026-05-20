@@ -9,8 +9,19 @@
     <menuitem id="restaurant_products_menu"
         name="Products"
         parent="restaurant_root_menu"
+        sequence="10" />
+
+    <menuitem id="restaurant_products_submenu_products"
+        name="Products"
+        parent="restaurant_products_menu"
         action="product.product_template_action"
         sequence="10" />
+
+    <menuitem id="restaurant_products_submenu_variants"
+        name="Product Variants"
+        parent="restaurant_products_menu"
+        action="product.product_normal_action"
+        sequence="20" />
 
     <menuitem id="restaurant_menu_configuration"
         name="Configuration"
