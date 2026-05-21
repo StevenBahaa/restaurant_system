@@ -89,6 +89,53 @@ class ProductTemplate(models.Model):
         store=True,
     )
 
+    combo_total_cost = fields.Float(
+        string="Combo Total Cost",
+        compute="_compute_combo_cost",
+        store=True,
+    )
+
+    combo_food_cost_percentage = fields.Float(
+        string="Combo Food Cost %",
+        compute="_compute_combo_cost",
+        store=True,
+    )
+
+    @api.depends(
+        "restaurant_product_type",
+        "list_price",
+        "combo_component_line_ids.quantity",
+        "combo_component_line_ids.component_product_tmpl_id",
+        "combo_component_line_ids.component_product_tmpl_id.standard_price",
+    )
+    def _compute_combo_cost(self):
+        for product in self:
+            if product.restaurant_product_type != "combo":
+                product.combo_total_cost = 0.0
+                product.combo_food_cost_percentage = 0.0
+                continue
+
+            total_cost = 0.0
+
+            for line in product.combo_component_line_ids:
+                component_cost = product._get_combo_component_resolved_cost(
+                    line.component_product_tmpl_id
+                )
+                total_cost += component_cost * line.quantity
+
+            product.combo_total_cost = total_cost
+
+            if product.list_price > 0:
+                product.combo_food_cost_percentage = (total_cost / product.list_price) * 100
+            else:
+                product.combo_food_cost_percentage = 0.0
+    
+
+    def _get_combo_component_resolved_cost(self, component_product):
+        self.ensure_one()
+        if not component_product:
+            return 0.0
+        return component_product.standard_price
     @api.depends(
         "restaurant_product_type",
         "combo_is_valid",

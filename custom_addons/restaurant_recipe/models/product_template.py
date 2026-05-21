@@ -94,3 +94,25 @@ class ProductTemplate(models.Model):
                 raise ValidationError(
                     "Sales price cannot be lower than recipe cost."
                 )
+
+    def _get_combo_component_resolved_cost(self, component_product):
+        self.ensure_one()
+        if not component_product:
+            return 0.0
+
+        if component_product.restaurant_product_type in ("prepared_meal", "beverage"):
+            approved_recipe = self._get_approved_recipe_for_product(component_product)
+            if approved_recipe:
+                return approved_recipe.recipe_cost
+
+        return super()._get_combo_component_resolved_cost(component_product)
+
+    def _get_approved_recipe_for_product(self, product_tmpl):
+        self.ensure_one()
+        if not product_tmpl:
+            return self.env["restaurant.recipe"]
+
+        return self.env["restaurant.recipe"].search([
+            ("product_tmpl_id", "=", product_tmpl.id),
+            ("state", "=", "approved"),
+        ], limit=1)
