@@ -40,30 +40,35 @@ class ProductTemplate(models.Model):
         "restaurant.combo.line",
         "combo_product_tmpl_id",
         string="Combo Components",
+        tracking=True,
     )
 
     combo_component_count = fields.Integer(
         string="Combo Component Count",
         compute="_compute_combo_totals",
         store=True, 
+        tracking=True,
     )
 
     combo_individual_total_price = fields.Float(
         string="Individual Components Total",
         compute="_compute_combo_totals",
         store=True,
+        tracking=True,
     )
 
     combo_saving_amount = fields.Float(
         string="Combo Saving",
         compute="_compute_combo_totals",
         store=True,
+        tracking=True,
     )
 
     combo_is_valid = fields.Boolean(
         string="Combo Is Valid",
         compute="_compute_combo_validation",
         store=True,
+        tracking=True,
     )
 
     combo_validation_message = fields.Char(
@@ -234,9 +239,20 @@ class ProductTemplate(models.Model):
             "combo_component_line_ids",
         }
 
-        if validation_trigger_fields.intersection(vals.keys()):
-            for product in self:
-                if product.restaurant_product_type == "combo" and product.active:
+        protected_combo_fields = {
+            "restaurant_product_type",
+            "combo_component_line_ids",
+        }
+
+        for product in self:
+            if product.restaurant_product_type == "combo":
+                if protected_combo_fields.intersection(vals.keys()):
+                    if product._is_combo_operationally_used():
+                        raise ValidationError(
+                            "You cannot modify combo structure after operational usage."
+                        )
+
+                if product.active and validation_trigger_fields.intersection(vals.keys()):
                     product._check_combo_operational_validity()
 
         return res
@@ -250,3 +266,77 @@ class ProductTemplate(models.Model):
                 product._check_combo_operational_validity()
 
         return products
+    
+    def _is_combo_operationally_used(self):
+        """
+        Future hook.
+        Later this will check POS orders / sale orders / kitchen orders.
+        For now, combo products are not considered used.
+        """
+        self.ensure_one()
+        return False
+    
+    def unlink(self):
+        for product in self:
+            if product.restaurant_product_type == "combo" and product._is_combo_operationally_used():
+                raise ValidationError(
+                    "You cannot delete a combo meal after it has been used operationally. Archive it instead."
+                )
+
+        return super().unlink()
+
+    def _get_combo_component_lines(self):
+        self.ensure_one()
+
+        if self.restaurant_product_type != "combo":
+            return self.env["restaurant.combo.line"]
+
+        return self.combo_component_line_ids.sorted(lambda line: (line.sequence, line.id))
+
+    def _get_combo_component_products(self):
+        self.ensure_one()
+
+        return self._get_combo_component_lines().mapped("component_product_tmpl_id")
+
+    def _get_combo_individual_total_price(self):
+        self.ensure_one()
+
+        total = 0.0
+        for line in self._get_combo_component_lines():
+            total += line.component_product_tmpl_id.list_price * line.quantity
+
+        return total
+
+    def _get_combo_saving_amount(self):
+        self.ensure_one()
+
+        return self._get_combo_individual_total_price() - self.list_price
+
+    def _prepare_combo_operational_payload(self):
+        self.ensure_one()
+        self._check_combo_operational_validity()
+
+        payload = {
+            "combo_product_tmpl_id": self.id,
+            "combo_name": self.display_name,
+            "combo_price": self.list_price,
+            "individual_total_price": self._get_combo_individual_total_price(),
+            "saving_amount": self._get_combo_saving_amount(),
+            "components": [],
+        }
+
+        for line in self._get_combo_component_lines():
+            payload["components"].append({
+                "line_id": line.id,
+                "component_product_tmpl_id": line.component_product_tmpl_id.id,
+                "component_name": line.component_product_tmpl_id.display_name,
+                "quantity": line.quantity,
+                "allow_customization": line.allow_customization,
+                "is_swappable": line.is_swappable,
+                "allowed_substitute_product_tmpl_ids": line.allowed_substitute_product_ids.ids,
+                "is_upgradeable": line.is_upgradeable,
+                "upgrade_price": line.upgrade_price,
+                "notes": line.notes or "",
+            })
+
+        return payload

@@ -74,6 +74,8 @@ class RestaurantComboLine(models.Model):
 
     notes = fields.Text(string="Notes")
 
+
+
     @api.constrains("combo_product_tmpl_id", "component_product_tmpl_id")
     def _check_component_not_combo_itself(self):
         for record in self:
@@ -137,3 +139,40 @@ class RestaurantComboLine(models.Model):
 
                 if not product.active:
                     raise ValidationError("Archived products cannot be used as allowed substitutes.")
+                
+    @api.constrains("combo_product_tmpl_id" , "component_product_tmpl_id")
+    def _check_unique_component_per_combo(self):
+        for line in self:
+            if not line.combo_product_tmpl_id or not line.component_product_tmpl_id:
+                continue
+
+            duplicate = self.search_count([
+                ("id", "!=", line.id),
+                ("combo_product_tmpl_id", "=", line.combo_product_tmpl_id.id),
+                ("component_product_tmpl_id", "=", line.component_product_tmpl_id.id),
+            ])
+
+            if duplicate:
+                raise ValidationError(
+                    "The same component cannot be added more than once to the same combo."
+                )
+    
+    def _is_operationally_used(self):
+        """
+        Future hook.
+        Later this will check POS orders / sale orders / kitchen orders.
+        For now, no combo line is considered used.
+        """
+        self.ensure_one()
+        return False
+    
+
+    def unlink(self):
+        for line in self:
+            if line._is_operationally_used():
+                raise ValidationError(
+                    "You cannot delete a combo component after it has been used operationally."
+                )
+
+        return super().unlink()
+        
