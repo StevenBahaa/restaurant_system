@@ -77,6 +77,39 @@ class ProductTemplate(models.Model):
         store=True,
     )
 
+    combo_is_available = fields.Boolean(
+        string="Combo Available",
+        compute="_compute_combo_availability",
+        store=True,
+    )
+
+    combo_unavailable_reason = fields.Text(
+        string="Combo Unavailable Reason",
+        compute="_compute_combo_availability",
+        store=True,
+    )
+
+    @api.depends(
+        "restaurant_product_type",
+        "combo_is_valid",
+        "combo_validation_message",
+        "combo_component_line_ids",
+        "combo_component_line_ids.component_product_tmpl_id",
+        "combo_component_line_ids.component_product_tmpl_id.active",
+        "combo_component_line_ids.component_product_tmpl_id.sale_ok",
+    )
+    def _compute_combo_availability(self):
+        for product in self:
+            if product.restaurant_product_type != "combo":
+                product.combo_is_available = True
+                product.combo_unavailable_reason = False
+                continue
+
+            availability = product._get_combo_availability_status()
+
+            product.combo_is_available = availability["available"]
+            product.combo_unavailable_reason = availability["reason"]
+
     @api.depends(
         "restaurant_product_type",
         "sale_ok",
@@ -315,6 +348,7 @@ class ProductTemplate(models.Model):
     def _prepare_combo_operational_payload(self):
         self.ensure_one()
         self._check_combo_operational_validity()
+        availability = self._get_combo_availability_status()
 
         payload = {
             "combo_product_tmpl_id": self.id,
@@ -322,6 +356,8 @@ class ProductTemplate(models.Model):
             "combo_price": self.list_price,
             "individual_total_price": self._get_combo_individual_total_price(),
             "saving_amount": self._get_combo_saving_amount(),
+            "is_available": availability["available"],
+            "unavailable_reason": availability["reason"] or "",
             "components": [],
         }
 
@@ -340,3 +376,54 @@ class ProductTemplate(models.Model):
             })
 
         return payload
+    
+    def _get_combo_availability_status(self):
+        self.ensure_one()
+
+        if self.restaurant_product_type != "combo":
+            return {
+                "available": True,
+                "reason": False,
+            }
+
+        if not self.combo_is_valid:
+            return {
+                "available": False,
+                "reason": self.combo_validation_message or "Combo meal is not operationally valid.",
+            }
+
+        unavailable_reasons = []
+
+        for line in self._get_combo_component_lines():
+            component = line.component_product_tmpl_id
+
+            if not component:
+                unavailable_reasons.append("Combo contains an empty component line.")
+                continue
+
+            if not component.sale_ok:
+                unavailable_reasons.append(
+                    f"Component '{component.display_name}' is not sellable."
+                )
+
+            # Future extension point:
+            # UC-08 Branch availability
+            # UC-11 Stock-linked availability
+            # UC-12 Menu scheduling
+            #
+            # Later, other modules can inherit this method and append:
+            # - component unavailable in current branch
+            # - component ingredient out of stock
+            # - component outside schedule
+            # - component variant unavailable
+
+        if unavailable_reasons:
+            return {
+                "available": False,
+                "reason": "\n".join(unavailable_reasons),
+            }
+
+        return {
+            "available": True,
+            "reason": False,
+        }

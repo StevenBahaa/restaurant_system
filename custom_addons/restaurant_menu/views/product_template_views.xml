@@ -79,6 +79,14 @@
                         <field name="combo_validation_message" readonly="1" nolabel="1"/>
                     </div>
 
+                    <div class="alert alert-danger"
+                        role="alert"
+                        invisible="restaurant_product_type != 'combo' or combo_is_available">
+                        <strong>Combo Meal is currently unavailable.</strong>
+                        <br/>
+                        <field name="combo_unavailable_reason" readonly="1" nolabel="1"/>
+                    </div>
+
                     <group string="Combo Financial Summary">
                         <group>
                             <field name="combo_component_count" readonly="1"/>
@@ -87,6 +95,7 @@
                         </group>
                         <group>
                             <field name="combo_is_valid" readonly="1"/>
+                            <field name="combo_is_available" readonly="1"/>
                         </group>
                     </group>
 
