@@ -53,7 +53,11 @@ class ProductTemplate(models.Model):
         for product in self:
             product.recipe_count = len(product.recipe_ids)
 
-    @api.depends("recipe_ids.total_cost")
+    @api.depends(
+        "recipe_ids.total_cost",
+        "recipe_ids.state",
+        "recipe_ids.active",
+    )
     def _compute_recipe_cost(self):
         for product in self:
             active_recipe = product.recipe_ids.filtered(
@@ -95,20 +99,9 @@ class ProductTemplate(models.Model):
                     "Sales price cannot be lower than recipe cost."
                 )
 
-    def _get_combo_component_resolved_cost(self, component_product):
-        self.ensure_one()
-        if not component_product:
-            return 0.0
-
-        if component_product.restaurant_product_type in ("prepared_meal", "beverage"):
-            approved_recipe = self._get_approved_recipe_for_product(component_product)
-            if approved_recipe:
-                return approved_recipe.total_cost
-
-        return super()._get_combo_component_resolved_cost(component_product)
-
     def _get_approved_recipe_for_product(self, product_tmpl):
         self.ensure_one()
+
         if not product_tmpl:
             return self.env["restaurant.recipe"]
 
@@ -116,3 +109,17 @@ class ProductTemplate(models.Model):
             ("product_tmpl_id", "=", product_tmpl.id),
             ("state", "=", "approved"),
         ], limit=1)
+
+
+    def _get_combo_component_resolved_cost(self, component_product):
+        self.ensure_one()
+
+        if not component_product:
+            return 0.0
+
+        approved_recipe = self._get_approved_recipe_for_product(component_product)
+
+        if approved_recipe:
+            return approved_recipe.recipe_cost
+
+        return component_product.standard_price
