@@ -113,7 +113,7 @@
                                 <field name="is_upgradeable"/>
                                 <field name="upgrade_price"
                                     invisible="not is_upgradeable"/>
-                                <field name="notes"/>
+                                <field name="notes" placeholder="Optional internal notes for this combo component..."/>
                             </list>
                         </field>
                     </group>
