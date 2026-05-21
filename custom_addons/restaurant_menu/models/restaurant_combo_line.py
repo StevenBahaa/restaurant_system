@@ -100,3 +100,40 @@ class RestaurantComboLine(models.Model):
                 raise ValidationError("Allowed substitutes cannot include the original component product.")
 
     
+    @api.constrains("component_product_tmpl_id")
+    def _check_component_operational_type(self):
+        allowed_types = {"prepared_meal", "beverage", "ready_item"}
+
+        for line in self:
+            component = line.component_product_tmpl_id
+            if not component:
+                continue
+
+            if not component.is_menu_item:
+                raise ValidationError("Combo component must be a menu item.")
+
+            if component.restaurant_product_type not in allowed_types:
+                raise ValidationError(
+                    "Combo component must be Prepared Meal, Beverage, or Ready Item."
+                )
+
+            if not component.active:
+                raise ValidationError("Archived products cannot be used as combo components.")
+
+    
+    @api.constrains("allowed_substitute_product_ids")
+    def _check_substitute_operational_types(self):
+        allowed_types = {"prepared_meal", "beverage", "ready_item"}
+
+        for line in self:
+            for product in line.allowed_substitute_product_ids:
+                if not product.is_menu_item:
+                    raise ValidationError("Allowed substitutes must be menu items.")
+
+                if product.restaurant_product_type not in allowed_types:
+                    raise ValidationError(
+                        "Allowed substitutes must be Prepared Meal, Beverage, or Ready Item."
+                    )
+
+                if not product.active:
+                    raise ValidationError("Archived products cannot be used as allowed substitutes.")

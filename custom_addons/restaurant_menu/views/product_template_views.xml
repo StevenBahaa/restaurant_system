@@ -70,11 +70,19 @@
 
                 <page string="Combo Components"
                     invisible="restaurant_product_type != 'combo'">
+
                     <group>
                         <group>
                             <field name="combo_component_count" readonly="1" />
                             <field name="combo_individual_total_price" readonly="1" />
                             <field name="combo_saving_amount" readonly="1" />
+                        </group>
+                        <group>
+                            <field name="combo_is_valid" readonly="1" />
+                            <field name="combo_validation_message"
+                                readonly="1"
+                                nolabel="1"
+                                invisible="combo_is_valid" />
                         </group>
                     </group>
 
@@ -85,11 +93,12 @@
                             <field name="quantity" />
                             <field name="allow_customization" />
                             <field name="is_swappable" />
-                            <field name="allowed_substitute_product_ids" widget="many2many_tags"
-                                column_invisible="not is_swappable" />
+                            <field name="allowed_substitute_product_ids"
+                                widget="many2many_tags"
+                                invisible="not is_swappable" />
                             <field name="is_upgradeable" />
                             <field name="upgrade_price"
-                                column_invisible="not is_upgradeable" />
+                                invisible="not is_upgradeable" />
                             <field name="notes" />
                         </list>
                     </field>
