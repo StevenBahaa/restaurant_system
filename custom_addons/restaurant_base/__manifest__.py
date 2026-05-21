@@ -6,10 +6,7 @@
     "author": "Steven Bahaa",
     "license": "LGPL-3",
     "depends": ["product"],
-    "data": [
-        "views/restaurant_menus.xml",
-    ],
+    "data": ["views/restaurant_menus.xml"],
     "installable": True,
     "application": True,
-    "auto_install": False,
 }

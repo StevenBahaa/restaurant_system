@@ -1,0 +1,139 @@
+from operator import index
+from typing import Sequence
+from odoo import models, fields , api
+from odoo.exceptions import ValidationError
+
+
+class RestaurantComboLine(models.Model):
+    _name = "restaurant.combo.line"
+    _description = "Restaurant Combo Component Line"
+    _inherit = ["mail.thread", "mail.activity.mixin"]
+    _order = "sequence , id"
+
+
+
+    
+    sequence = fields.Integer(default=10)
+
+    combo_product_tmpl_id = fields.Many2one(
+        'product.template', 
+        string='Combo Product', 
+        required=True, 
+        ondelete='cascade',
+        index = True
+    )
+    
+    component_product_tmpl_id = fields.Many2one(
+        'product.template', 
+        string='Component Product', 
+        required=True, 
+        ondelete='cascade',
+        domain=[
+            ("is_menu_item", "=", True),
+            ("restaurant_product_type", "in", ["prepared_meal", "beverage", "ready_item"]),
+        ],
+    )
+
+    quantity = fields.Float(
+        string="Quantity",
+        required=True,
+        default=1.0,
+    )
+
+    allow_customization = fields.Boolean(
+        string="Allow Customization",
+        default=False,
+    )
+
+    is_swappable = fields.Boolean(
+        string="Swappable",
+        default=False,
+    )
+
+    allowed_substitute_product_ids = fields.Many2many(
+        "product.template",
+        "restaurant_combo_line_substitute_rel",
+        "combo_line_id",
+        "product_tmpl_id",
+        string="Allowed Substitutes",
+        domain=[
+            ("is_menu_item", "=", True),
+            ("restaurant_product_type", "in", ["prepared_meal", "beverage", "ready_item"]),
+        ],
+    )
+
+    is_upgradeable = fields.Boolean(
+        string="Upgradeable",
+        default=False,
+    )
+
+    upgrade_price = fields.Float(
+        string="Upgrade Price",
+        default=0.0,
+    )
+
+    notes = fields.Text(string="Notes")
+
+    @api.constrains("combo_product_tmpl_id", "component_product_tmpl_id")
+    def _check_component_not_combo_itself(self):
+        for record in self:
+            if record.combo_product_tmpl_id and record.component_product_tmpl_id:
+                if record.combo_product_tmpl_id == record.component_product_tmpl_id:
+                    raise ValidationError("Combo product and component product cannot be the same.")    
+    
+    @api.constrains("quantity")
+    def _check_quantity_positive(self):
+        for record in self:
+            if record.quantity <= 0:
+                raise ValidationError("Quantity must be positive.")    
+
+    @api.constrains("upgrade_price")
+    def _check_upgrade_price_non_negative(self):
+        for record in self:
+            if record.upgrade_price < 0:
+                raise ValidationError("Upgrade price must be non-negative.")    
+
+    @api.constrains("allowed_substitute_product_ids")
+    def _check_substitutes_do_not_include_component(self):
+        for line in self:
+            if line.component_product_tmpl_id in line.allowed_substitute_product_ids:
+                raise ValidationError("Allowed substitutes cannot include the original component product.")
+
+    
+    @api.constrains("component_product_tmpl_id")
+    def _check_component_operational_type(self):
+        allowed_types = {"prepared_meal", "beverage", "ready_item"}
+
+        for line in self:
+            component = line.component_product_tmpl_id
+            if not component:
+                continue
+
+            if not component.is_menu_item:
+                raise ValidationError("Combo component must be a menu item.")
+
+            if component.restaurant_product_type not in allowed_types:
+                raise ValidationError(
+                    "Combo component must be Prepared Meal, Beverage, or Ready Item."
+                )
+
+            if not component.active:
+                raise ValidationError("Archived products cannot be used as combo components.")
+
+    
+    @api.constrains("allowed_substitute_product_ids")
+    def _check_substitute_operational_types(self):
+        allowed_types = {"prepared_meal", "beverage", "ready_item"}
+
+        for line in self:
+            for product in line.allowed_substitute_product_ids:
+                if not product.is_menu_item:
+                    raise ValidationError("Allowed substitutes must be menu items.")
+
+                if product.restaurant_product_type not in allowed_types:
+                    raise ValidationError(
+                        "Allowed substitutes must be Prepared Meal, Beverage, or Ready Item."
+                    )
+
+                if not product.active:
+                    raise ValidationError("Archived products cannot be used as allowed substitutes.")
