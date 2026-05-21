@@ -87,7 +87,7 @@
                         <field name="combo_unavailable_reason" readonly="1" nolabel="1"/>
                     </div>
 
-                    <group string="Combo Financial Summary">
+                   <group string="Combo Financial Summary">
                         <group>
                             <field name="combo_component_count" readonly="1"/>
                             <field name="combo_individual_total_price" readonly="1"/>
@@ -96,6 +96,17 @@
                         <group>
                             <field name="combo_is_valid" readonly="1"/>
                             <field name="combo_is_available" readonly="1"/>
+                            <field name="combo_unavailable_reason"
+                                readonly="1"
+                                nolabel="1"
+                                invisible="combo_is_available"/>
+                        </group>
+                    </group>
+
+                    <group string="Combo Cost Summary">
+                        <group>
+                            <field name="combo_total_cost" readonly="1"/>
+                            <field name="combo_food_cost_percentage" readonly="1"/>
                         </group>
                     </group>
 

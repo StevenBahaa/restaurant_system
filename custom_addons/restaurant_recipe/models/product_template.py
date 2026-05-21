@@ -103,7 +103,7 @@ class ProductTemplate(models.Model):
         if component_product.restaurant_product_type in ("prepared_meal", "beverage"):
             approved_recipe = self._get_approved_recipe_for_product(component_product)
             if approved_recipe:
-                return approved_recipe.recipe_cost
+                return approved_recipe.total_cost
 
         return super()._get_combo_component_resolved_cost(component_product)
 
