@@ -101,6 +101,38 @@ class ProductTemplate(models.Model):
         store=True,
     )
 
+    combo_cost_warning = fields.Boolean(
+        string="Combo Cost Warning",
+        compute="_compute_combo_cost_warning",
+        store=True,
+    )
+
+    combo_cost_warning_message = fields.Text(
+        string="Combo Cost Warning Message",
+        compute="_compute_combo_cost_warning",
+        store=True,
+    )
+
+    @api.depends(
+        "restaurant_product_type",
+        "combo_total_cost",
+        "combo_food_cost_percentage",
+        "list_price",
+    )
+    def _compute_combo_cost_warning(self):
+        for product in self:
+            if product.restaurant_product_type != "combo":
+                product.combo_cost_warning = False
+                product.combo_cost_warning_message = False
+            else:
+                if product.combo_food_cost_percentage > 60.0:
+                    product.combo_cost_warning = True
+                    product.combo_cost_warning_message = "Combo food cost percentage is high. Review the combo price or component costs."
+                else:
+                    product.combo_cost_warning = False
+                    product.combo_cost_warning_message = False
+
+
     @api.depends(
         "restaurant_product_type",
         "list_price",

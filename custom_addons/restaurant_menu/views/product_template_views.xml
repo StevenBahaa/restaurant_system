@@ -18,7 +18,7 @@
                 </group>
             </xpath>
             <xpath expr="//notebook" position="inside">
-                
+
                 <page string="Add-ons" name="restaurant_addons" invisible="not is_menu_item">
                     <field name="product_addon_group_ids" nolabel="1">
                         <list>
@@ -73,63 +73,99 @@
                     invisible="restaurant_product_type != 'combo'">
                     <div class="alert alert-warning"
                         role="alert"
-                        invisible="combo_is_valid">
+                        invisible="restaurant_product_type != 'combo' or combo_is_valid">
                         <strong>Combo Meal is not ready to sell.</strong>
-                        <br/>
-                        <field name="combo_validation_message" readonly="1" nolabel="1"/>
+                        <br />
+                        <field name="combo_validation_message" readonly="1" nolabel="1" />
                     </div>
 
                     <div class="alert alert-danger"
                         role="alert"
-                        invisible="restaurant_product_type != 'combo' or combo_is_available">
+                        invisible="restaurant_product_type != 'combo' or not combo_is_valid or combo_is_available">
                         <strong>Combo Meal is currently unavailable.</strong>
-                        <br/>
-                        <field name="combo_unavailable_reason" readonly="1" nolabel="1"/>
+                        <br />
+                        <field name="combo_unavailable_reason" readonly="1" nolabel="1" />
                     </div>
 
-                   <group string="Combo Financial Summary">
-                        <group>
-                            <field name="combo_component_count" readonly="1"/>
-                            <field name="combo_individual_total_price" readonly="1"/>
-                            <field name="combo_saving_amount" readonly="1"/>
-                        </group>
-                        <group>
-                            <field name="combo_is_valid" readonly="1"/>
-                            <field name="combo_is_available" readonly="1"/>
-                            <field name="combo_unavailable_reason"
-                                readonly="1"
-                                nolabel="1"
-                                invisible="combo_is_available"/>
-                        </group>
-                    </group>
+                    <div class="alert alert-warning"
+                        role="alert"
+                        invisible="restaurant_product_type != 'combo' or not combo_is_valid or not combo_is_available or not combo_cost_warning">
+                        <strong>Combo cost warning.</strong>
+                        <br />
+                        <field name="combo_cost_warning_message" readonly="1" nolabel="1" />
+                    </div>
+                    <group>
+                        <group string="Combo Financial Summary">
+                            <group>
+                                <field name="combo_component_count" readonly="1" />
+                                <field name="combo_individual_total_price" readonly="1" />
+                                <field name="combo_saving_amount" readonly="1" />
+                            </group>
 
-                    <group string="Combo Cost Summary">
-                        <group>
-                            <field name="combo_total_cost" readonly="1"/>
-                            <field name="combo_food_cost_percentage" readonly="1"/>
                         </group>
-                    </group>
 
+                        <group string="Combo Cost Summary">
+                            <group>
+                                <field name="combo_total_cost" readonly="1" />
+                                <field name="combo_food_cost_percentage" readonly="1" />
+                            </group>
+
+                        </group>
+
+                    </group>
                     <group string="Combo Component Lines">
                         <field name="combo_component_line_ids" nolabel="1">
                             <list editable="bottom">
-                                <field name="sequence" widget="handle"/>
-                                <field name="component_product_tmpl_id"/>
-                                <field name="quantity"/>
-                                <field name="allow_customization"/>
-                                <field name="is_swappable"/>
+                                <field name="sequence" widget="handle" />
+                                <field name="component_product_tmpl_id" />
+                                <field name="quantity" />
+                                <field name="allow_customization" />
+                                <field name="is_swappable" />
                                 <field name="allowed_substitute_product_ids"
                                     widget="many2many_tags"
-                                    invisible="not is_swappable"/>
-                                <field name="is_upgradeable"/>
+                                    invisible="not is_swappable" />
+                                <field name="is_upgradeable" />
                                 <field name="upgrade_price"
-                                    invisible="not is_upgradeable"/>
-                                <field name="notes" placeholder="Optional internal notes for this combo component..."/>
+                                    invisible="not is_upgradeable" />
+                                <field name="notes" />
                             </list>
                         </field>
                     </group>
 
                 </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_template_search_view_restaurant_menu" model="ir.ui.view">
+        <field name="name">product.template.search.restaurant.menu</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='combo']" position="after">
+                <filter string="Combo Meals" name="combo_meals"
+                    domain="[('restaurant_product_type', '=', 'combo')]" />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_template_kanban_view_restaurant_menu" model="ir.ui.view">
+        <field name="name">product.template.kanban.restaurant.menu</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_kanban_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//kanban" position="inside">
+                <field name="restaurant_product_type" />
+                <field name="combo_is_valid" />
+                <field name="combo_is_available" />
+                <field name="combo_cost_warning" />
+            </xpath>
+            <xpath expr="//t[@t-name='card']/main/div[1]" position="inside">
+                <div t-if="record.restaurant_product_type.raw_value == 'combo'" class="d-flex flex-wrap gap-1 mt-1">
+                    <span t-if="!record.combo_is_valid.raw_value" class="badge text-bg-warning">Combo Meal is not ready to sell.</span>
+                    <span t-if="record.combo_is_valid.raw_value and !record.combo_is_available.raw_value" class="badge text-bg-danger">Combo Meal is currently unavailable.</span>
+                    <span t-if="record.combo_is_valid.raw_value and record.combo_is_available.raw_value and record.combo_cost_warning.raw_value" class="badge text-bg-warning">Combo cost warning.</span>
+                </div>
             </xpath>
         </field>
     </record>
