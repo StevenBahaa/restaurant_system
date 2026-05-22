@@ -119,7 +119,6 @@ class ProductProduct(models.Model):
     
     @api.constrains(
         "lst_price",
-        "final_recipe_cost",
         "product_tmpl_id",
     )
     def _check_variant_price_above_recipe_cost(self):
@@ -162,7 +161,7 @@ class RestaurantVariantRecipeLine(models.Model):
         string="Ingredient",
         required=True,
         domain=[
-            ("restaurant_product_type", "=", "ingredient"),
+            ("restaurant_product_type", "in", ["ingredient", "packaging"]),
         ],
     )
 
@@ -213,7 +212,7 @@ class RestaurantVariantRecipeLine(models.Model):
                 line.quantity * line.wastage_percent / 100.0
             )
 
-    @api.depends("ingredient_product_id")
+    @api.depends("ingredient_product_id", "ingredient_product_id.standard_price")
     def _compute_ingredient_cost(self):
         for line in self:
             line.ingredient_cost = line.ingredient_product_id.standard_price or 0.0

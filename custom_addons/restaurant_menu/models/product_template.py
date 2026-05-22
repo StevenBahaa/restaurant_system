@@ -104,6 +104,7 @@ class ProductTemplate(models.Model):
     @api.depends(
         "restaurant_product_type",
         "list_price",
+        "combo_component_line_ids",
         "combo_component_line_ids.quantity",
         "combo_component_line_ids.component_product_tmpl_id",
         "combo_component_line_ids.component_product_tmpl_id.standard_price",
@@ -264,6 +265,7 @@ class ProductTemplate(models.Model):
     @api.depends(
         "restaurant_product_type",
         "list_price",
+        "combo_component_line_ids",
         "combo_component_line_ids.quantity",
         "combo_component_line_ids.component_product_tmpl_id.list_price",
     )

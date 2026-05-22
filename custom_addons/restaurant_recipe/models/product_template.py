@@ -54,6 +54,7 @@ class ProductTemplate(models.Model):
             product.recipe_count = len(product.recipe_ids)
 
     @api.depends(
+        "recipe_ids",
         "recipe_ids.total_cost",
         "recipe_ids.state",
         "recipe_ids.active",
@@ -87,7 +88,7 @@ class ProductTemplate(models.Model):
             else:
                 product.food_cost_percent = 0.0 
 
-    @api.constrains("list_price", "recipe_cost", "is_menu_item")
+    @api.constrains("list_price", "is_menu_item")
     def _check_recipe_cost_vs_sales_price(self):
         for product in self:
             if (
@@ -120,6 +121,6 @@ class ProductTemplate(models.Model):
         approved_recipe = self._get_approved_recipe_for_product(component_product)
 
         if approved_recipe:
-            return approved_recipe.recipe_cost
+            return approved_recipe.total_cost
 
         return component_product.standard_price
