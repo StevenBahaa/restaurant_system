@@ -7,6 +7,7 @@
     "license": "LGPL-3",
     "depends": ["base", "product", "stock"],
     "data": [
+        "security/restaurant_security.xml",
         "security/ir.model.access.csv",
         "views/restaurant_menus.xml",
         "views/restaurant_branch_views.xml",

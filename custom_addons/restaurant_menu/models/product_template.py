@@ -446,8 +446,8 @@ class ProductTemplate(models.Model):
 
         return True
 
-    def write(self, vals):
-        availability_fields = {
+    def _get_branch_availability_fields(self):
+        return {
             "branch_availability_mode",
             "branch_available_ids",
             "branch_excluded_ids",
@@ -455,6 +455,76 @@ class ProductTemplate(models.Model):
             "branch_available_until",
             "branch_unavailable_reason",
         }
+
+    def _user_can_manage_all_branch_availability(self):
+        return self.env.user.has_group("restaurant_base.group_restaurant_operations_manager") or self.env.su
+
+    def _get_user_managed_branches(self):
+        return self.env["restaurant.branch"].search([("manager_user_ids", "in", self.env.user.id)])
+
+    def _extract_affected_branch_ids(self, command_list):
+        if not command_list:
+            return set()
+        branch_ids = set()
+        for command in command_list:
+            if command[0] in (4, 6):
+                if command[0] == 6:
+                    branch_ids.update(command[2])
+                else:
+                    branch_ids.add(command[1])
+            elif command[0] == 3:
+                branch_ids.add(command[1])
+        return branch_ids
+
+    def _check_user_can_modify_branch_availability(self, vals, is_create=False):
+        availability_fields = self._get_branch_availability_fields()
+        if not any(f in vals for f in availability_fields):
+            return
+
+        if self._user_can_manage_all_branch_availability():
+            return
+
+        is_branch_manager = self.env.user.has_group("restaurant_base.group_restaurant_branch_manager")
+        if not is_branch_manager:
+            raise ValidationError("You do not have permission to modify branch availability.")
+
+        managed_branches = self._get_user_managed_branches()
+
+        if is_create:
+            mode = vals.get("branch_availability_mode", "all_branches")
+            if mode == "all_branches":
+                raise ValidationError("Branch Managers cannot use 'All Branches' mode.")
+            
+            new_available_ids = self._extract_affected_branch_ids(vals.get("branch_available_ids", []))
+            new_excluded_ids = self._extract_affected_branch_ids(vals.get("branch_excluded_ids", []))
+            
+            affected_branches = self.env["restaurant.branch"].browse(list(new_available_ids | new_excluded_ids))
+            unmanaged = affected_branches - managed_branches
+            if unmanaged:
+                raise ValidationError(f"You can only modify availability for branches you manage. Unmanaged: {', '.join(unmanaged.mapped('name'))}")
+        else:
+            for record in self:
+                mode = vals.get("branch_availability_mode", record.branch_availability_mode)
+                if mode == "all_branches":
+                    raise ValidationError("Branch Managers cannot use 'All Branches' mode.")
+
+                affected_branches = self.env["restaurant.branch"].browse()
+                affected_branches |= record.branch_available_ids
+                affected_branches |= record.branch_excluded_ids
+
+                new_available_ids = self._extract_affected_branch_ids(vals.get("branch_available_ids", []))
+                new_excluded_ids = self._extract_affected_branch_ids(vals.get("branch_excluded_ids", []))
+
+                affected_branches |= self.env["restaurant.branch"].browse(list(new_available_ids | new_excluded_ids))
+
+                unmanaged = affected_branches - managed_branches
+                if unmanaged:
+                    raise ValidationError(f"You can only modify availability for branches you manage. Unmanaged: {', '.join(unmanaged.mapped('name'))}")
+
+    def write(self, vals):
+        self._check_user_can_modify_branch_availability(vals, is_create=False)
+
+        availability_fields = self._get_branch_availability_fields()
 
         has_availability_changes = any(f in vals for f in availability_fields)
         
@@ -520,16 +590,10 @@ class ProductTemplate(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        availability_fields = {
-            "branch_availability_mode",
-            "branch_available_ids",
-            "branch_excluded_ids",
-            "branch_available_from",
-            "branch_available_until",
-            "branch_unavailable_reason",
-        }
+        availability_fields = self._get_branch_availability_fields()
 
         for vals in vals_list:
+            self._check_user_can_modify_branch_availability(vals, is_create=True)
             mode = vals.get("branch_availability_mode", "all_branches")
             if mode == "all_branches":
                 vals["branch_available_ids"] = [(5, 0, 0)]
@@ -855,7 +919,7 @@ class ProductTemplate(models.Model):
 
         change_summary = " ".join(summary_parts)
 
-        return self.env["restaurant.branch.availability.log"].create({
+        return self.env["restaurant.branch.availability.log"].sudo().create({
             "product_tmpl_id": self.id,
             "changed_by_id": self.env.user.id,
             "changed_on": fields.Datetime.now(),
