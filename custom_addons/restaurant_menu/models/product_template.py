@@ -407,7 +407,24 @@ class ProductTemplate(models.Model):
             if overlap:
                 raise ValidationError("Available and Excluded branches must not overlap.")
 
+    @api.constrains('branch_available_ids', 'branch_excluded_ids')
+    def _check_branch_active_only(self):
+        for product in self.with_context(active_test=False):
+            if any(not b.active for b in product.branch_available_ids):
+                raise ValidationError("Archived branches cannot be used as available branches.")
+            if any(not b.active for b in product.branch_excluded_ids):
+                raise ValidationError("Archived branches cannot be used as excluded branches.")
 
+    @api.constrains('company_id', 'branch_available_ids', 'branch_excluded_ids')
+    def _check_branch_company_consistency(self):
+        for product in self.with_context(active_test=False):
+            if product.company_id:
+                for branch in product.branch_available_ids:
+                    if branch.company_id != product.company_id:
+                        raise ValidationError("Branch availability branches must belong to the same company as the product.")
+                for branch in product.branch_excluded_ids:
+                    if branch.company_id != product.company_id:
+                        raise ValidationError("Branch availability branches must belong to the same company as the product.")
 
     def _check_combo_operational_validity(self):
         for product in self:
@@ -520,11 +537,6 @@ class ProductTemplate(models.Model):
 
     
     def _is_combo_operationally_used(self):
-        """
-        Future hook.
-        Later this will check POS orders / sale orders / kitchen orders.
-        For now, combo products are not considered used.
-        """
         self.ensure_one()
         return False
     
@@ -625,17 +637,6 @@ class ProductTemplate(models.Model):
                     f"Component '{component.display_name}' is not sellable."
                 )
 
-            # Future extension point:
-            # UC-08 Branch availability
-            # UC-11 Stock-linked availability
-            # UC-12 Menu scheduling
-            #
-            # Later, other modules can inherit this method and append:
-            # - component unavailable in current branch
-            # - component ingredient out of stock
-            # - component outside schedule
-            # - component variant unavailable
-
         if unavailable_reasons:
             return {
                 "available": False,
@@ -652,13 +653,7 @@ class ProductTemplate(models.Model):
     # ──────────────────────────────────────────────────────────────────
 
     def _is_available_in_branch(self, branch, check_date=None):
-        """Return True if the product is available in the given branch on
-        the given date, False otherwise.
 
-        This is a context-specific domain method (not a stored field)
-        because availability depends on which branch and which date the
-        caller is asking about.
-        """
         self.ensure_one()
 
         if check_date is None:
@@ -676,8 +671,14 @@ class ProductTemplate(models.Model):
         if not branch:
             return False
 
+        branch.ensure_one()
+
         # D) Branch must be active
         if not branch.active:
+            return False
+
+        # Company mismatch check
+        if self.company_id and branch.company_id != self.company_id:
             return False
 
         # E) Date range checks
@@ -698,12 +699,6 @@ class ProductTemplate(models.Model):
         return False
 
     def _get_branch_unavailability_reason(self, branch, check_date=None):
-        """Return a human-readable reason string if the product is *not*
-        available in the given branch, or False if it *is* available.
-
-        Reason priority follows the same order as the resolver checks so
-        callers always get the most specific explanation first.
-        """
         self.ensure_one()
 
         if check_date is None:
@@ -720,10 +715,16 @@ class ProductTemplate(models.Model):
         # C) Missing branch
         if not branch:
             return "Branch is required."
+        
+        branch.ensure_one()
 
         # D) Archived branch
         if not branch.active:
             return "Branch is archived."
+
+        # Company mismatch check
+        if self.company_id and branch.company_id != self.company_id:
+            return "Branch belongs to a different company than the product."
 
         # E) Date range
         if self.branch_available_from and check_date < self.branch_available_from:
@@ -748,12 +749,11 @@ class ProductTemplate(models.Model):
         # I) Fallback
         return "Product is not available in this branch."
 
+
     def _get_branch_availability_payload(self, branch, check_date=None):
-        """Return a dict summarising the availability status of this
-        product in the given branch.  Designed as a stable contract for
-        future POS / backend integration layers.
-        """
         self.ensure_one()
+        if branch:
+            branch.ensure_one() 
         available = self._is_available_in_branch(branch, check_date)
         reason = self._get_branch_unavailability_reason(branch, check_date) if not available else ""
         return {
@@ -762,4 +762,4 @@ class ProductTemplate(models.Model):
             "available": available,
             "reason": reason or "",
             "mode": self.branch_availability_mode,
-        }
+        }

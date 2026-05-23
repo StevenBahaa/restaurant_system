@@ -155,10 +155,10 @@
                         </group>
                     </group>
                     <group string="Selected Branches" invisible="branch_availability_mode != 'selected_branches'">
-                        <field name="branch_available_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}"/>
+                        <field name="branch_available_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('active', '=', True)]"/>
                     </group>
                     <group string="Excluded Branches" invisible="branch_availability_mode != 'excluded_branches'">
-                        <field name="branch_excluded_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}"/>
+                        <field name="branch_excluded_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('active', '=', True)]"/>
                     </group>
                     <group string="Audit" name="availability_audit">
                         <group>
