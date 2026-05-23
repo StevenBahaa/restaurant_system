@@ -136,9 +136,16 @@
 
                 <page string="Branch Availability" name="branch_availability" invisible="not is_menu_item">
                     <div class="alert alert-info" role="alert">
-                        <strong>Branch Availability Information:</strong>
-                        <br />
-                        These rules determine which restaurant branches can sell or offer this item. They work alongside the global active and sellable status.
+                        <strong>Branch availability summary</strong>
+                        <br/>
+                        <field name="branch_availability_summary" readonly="1" nolabel="1"/>
+                        <br invisible="not branch_availability_date_summary"/>
+                        <field name="branch_availability_date_summary"
+                               readonly="1"
+                               nolabel="1"
+                               invisible="not branch_availability_date_summary"/>
+                        <hr class="my-2"/>
+                        <span class="text-muted">Branch availability controls where this product can be offered. Product active/sellable status still applies globally.</span>
                     </div>
                     <group>
                         <group string="Availability Rule">
@@ -195,6 +202,10 @@
                 <filter string="Combo Meals" name="combo_meals"
                     domain="[('restaurant_product_type', '=', 'combo')]" />
             </xpath>
+            <xpath expr="//filter[@name='combo_meals']" position="after">
+                <filter string="Branch Restricted" name="branch_restricted"
+                    domain="['|', ('branch_availability_mode', '!=', 'all_branches'), '|', ('branch_available_from', '!=', False), ('branch_available_until', '!=', False)]" />
+            </xpath>
         </field>
     </record>
 
@@ -208,12 +219,18 @@
                 <field name="combo_is_valid" />
                 <field name="combo_is_available" />
                 <field name="combo_cost_warning" />
+                <field name="is_menu_item" />
+                <field name="branch_availability_has_restriction" />
+                <field name="branch_availability_summary" />
             </xpath>
             <xpath expr="//t[@t-name='card']/main/div[1]" position="inside">
                 <div t-if="record.restaurant_product_type.raw_value == 'combo'" class="d-flex flex-wrap gap-1 mt-1">
                     <span t-if="!record.combo_is_valid.raw_value" class="badge text-bg-warning">Combo Meal is not ready to sell.</span>
                     <span t-if="record.combo_is_valid.raw_value and !record.combo_is_available.raw_value" class="badge text-bg-danger">Combo Meal is currently unavailable.</span>
                     <span t-if="record.combo_is_valid.raw_value and record.combo_is_available.raw_value and record.combo_cost_warning.raw_value" class="badge text-bg-warning">Combo cost warning.</span>
+                </div>
+                <div t-if="record.is_menu_item.raw_value and record.branch_availability_has_restriction.raw_value" class="d-flex flex-wrap gap-1 mt-1">
+                    <span class="badge text-bg-warning" t-att-title="record.branch_availability_summary.raw_value">Branch Restricted</span>
                 </div>
             </xpath>
         </field>

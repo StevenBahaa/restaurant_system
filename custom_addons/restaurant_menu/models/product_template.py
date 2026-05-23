@@ -68,6 +68,19 @@ class ProductTemplate(models.Model):
         readonly=True,
     )
 
+    branch_availability_summary = fields.Char(
+        string="Branch Availability Summary",
+        compute="_compute_branch_availability_summary",
+    )
+    branch_availability_has_restriction = fields.Boolean(
+        string="Branch Availability Has Restriction",
+        compute="_compute_branch_availability_has_restriction",
+    )
+    branch_availability_date_summary = fields.Char(
+        string="Branch Availability Date Summary",
+        compute="_compute_branch_availability_date_summary",
+    )
+
 
     restaurant_product_type = fields.Selection(
         [
@@ -853,6 +866,41 @@ class ProductTemplate(models.Model):
             return ""
         names = sorted(branches.with_context(active_test=False).mapped("name"))
         return ", ".join(names)
+
+    @api.depends("branch_availability_mode", "branch_available_ids.name", "branch_excluded_ids.name")
+    def _compute_branch_availability_summary(self):
+        for record in self:
+            if record.branch_availability_mode == "all_branches":
+                record.branch_availability_summary = "Available in all branches"
+            elif record.branch_availability_mode == "selected_branches":
+                branches = record._format_branch_names(record.branch_available_ids)
+                record.branch_availability_summary = f"Available only in: {branches}"
+            elif record.branch_availability_mode == "excluded_branches":
+                branches = record._format_branch_names(record.branch_excluded_ids)
+                record.branch_availability_summary = f"Available in all branches except: {branches}"
+            else:
+                record.branch_availability_summary = ""
+
+    @api.depends("branch_availability_mode", "branch_available_from", "branch_available_until")
+    def _compute_branch_availability_has_restriction(self):
+        for record in self:
+            record.branch_availability_has_restriction = (
+                record.branch_availability_mode != "all_branches"
+                or bool(record.branch_available_from)
+                or bool(record.branch_available_until)
+            )
+
+    @api.depends("branch_available_from", "branch_available_until")
+    def _compute_branch_availability_date_summary(self):
+        for record in self:
+            if record.branch_available_from and record.branch_available_until:
+                record.branch_availability_date_summary = f"Available from {record.branch_available_from} until {record.branch_available_until}"
+            elif record.branch_available_from:
+                record.branch_availability_date_summary = f"Available from {record.branch_available_from}"
+            elif record.branch_available_until:
+                record.branch_availability_date_summary = f"Available until {record.branch_available_until}"
+            else:
+                record.branch_availability_date_summary = False
 
     def _get_availability_mode_label(self, mode):
         labels = {
