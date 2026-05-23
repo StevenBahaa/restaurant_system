@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="product.product_normal_form_view" />
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
-                <page string="Variant Recipe" name="restaurant_variant_recipe">
+                <page string="Variant Recipe" name="restaurant_variant_recipe" invisible="not is_menu_item or restaurant_product_type not in ['prepared_meal', 'beverage', 'ready_item', 'semi_finished']">
                     <group>
                         <group>
                             <field name="has_variant_recipe_override" readonly="1" />

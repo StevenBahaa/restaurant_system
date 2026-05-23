@@ -45,3 +45,10 @@ ENV
 # OS
 .DS_Store
 Thumbs.db
+
+# Test files and local prompts
+docs/
+test_uc07.py
+test_uc07_recipe.py
+last_prompt.txt
+

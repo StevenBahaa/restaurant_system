@@ -74,6 +74,8 @@ class RestaurantComboLine(models.Model):
 
     notes = fields.Text(string="Notes")
 
+
+
     @api.constrains("combo_product_tmpl_id", "component_product_tmpl_id")
     def _check_component_not_combo_itself(self):
         for record in self:
@@ -87,17 +89,6 @@ class RestaurantComboLine(models.Model):
             if record.quantity <= 0:
                 raise ValidationError("Quantity must be positive.")    
 
-    @api.constrains("upgrade_price")
-    def _check_upgrade_price_non_negative(self):
-        for record in self:
-            if record.upgrade_price < 0:
-                raise ValidationError("Upgrade price must be non-negative.")    
-
-    @api.constrains("allowed_substitute_product_ids")
-    def _check_substitutes_do_not_include_component(self):
-        for line in self:
-            if line.component_product_tmpl_id in line.allowed_substitute_product_ids:
-                raise ValidationError("Allowed substitutes cannot include the original component product.")
 
     
     @api.constrains("component_product_tmpl_id")
@@ -121,12 +112,26 @@ class RestaurantComboLine(models.Model):
                 raise ValidationError("Archived products cannot be used as combo components.")
 
     
-    @api.constrains("allowed_substitute_product_ids")
+    @api.constrains(
+        "combo_product_tmpl_id",
+        "component_product_tmpl_id",
+        "allowed_substitute_product_ids",
+    )
     def _check_substitute_operational_types(self):
         allowed_types = {"prepared_meal", "beverage", "ready_item"}
 
         for line in self:
             for product in line.allowed_substitute_product_ids:
+                if product == line.component_product_tmpl_id:
+                    raise ValidationError(
+                        "Allowed substitutes cannot include the original component product."
+                    )
+
+                if product == line.combo_product_tmpl_id:
+                    raise ValidationError(
+                        "Allowed substitutes cannot include the combo product itself."
+                    )
+
                 if not product.is_menu_item:
                     raise ValidationError("Allowed substitutes must be menu items.")
 
@@ -136,4 +141,84 @@ class RestaurantComboLine(models.Model):
                     )
 
                 if not product.active:
-                    raise ValidationError("Archived products cannot be used as allowed substitutes.")
+                    raise ValidationError(
+                        "Archived products cannot be used as allowed substitutes."
+                    )
+                    
+    @api.constrains("combo_product_tmpl_id" , "component_product_tmpl_id")
+    def _check_unique_component_per_combo(self):
+        for line in self:
+            if not line.combo_product_tmpl_id or not line.component_product_tmpl_id:
+                continue
+
+            duplicate = self.search_count([
+                ("id", "!=", line.id),
+                ("combo_product_tmpl_id", "=", line.combo_product_tmpl_id.id),
+                ("component_product_tmpl_id", "=", line.component_product_tmpl_id.id),
+            ])
+
+            if duplicate:
+                raise ValidationError(
+                    "The same component cannot be added more than once to the same combo."
+                )
+            
+    @api.onchange("is_swappable")
+    def _onchange_is_swappable(self):
+        for line in self:
+            if not line.is_swappable:
+                line.allowed_substitute_product_ids = [(5, 0, 0)]
+
+    @api.onchange("is_upgradeable")
+    def _onchange_is_upgradeable(self):
+        for line in self:
+            if not line.is_upgradeable:
+                line.upgrade_price = 0.0
+
+    @api.constrains("is_swappable", "allowed_substitute_product_ids")
+    def _check_swappable_configuration(self):
+        for line in self:
+            if line.is_swappable and not line.allowed_substitute_product_ids:
+                raise ValidationError(
+                    "A swappable combo component must have at least one allowed substitute."
+                )
+
+            if not line.is_swappable and line.allowed_substitute_product_ids:
+                raise ValidationError(
+                    "Allowed substitutes can only be configured when the component is marked as swappable."
+                )
+
+    @api.constrains("is_upgradeable", "upgrade_price")
+    def _check_upgrade_configuration(self):
+        for line in self:
+            if line.upgrade_price < 0:
+                raise ValidationError("Upgrade price cannot be negative.")
+
+            if line.is_upgradeable and line.upgrade_price <= 0:
+                raise ValidationError(
+                    "An upgradeable combo component must have an upgrade price greater than zero."
+                )
+
+            if not line.is_upgradeable and line.upgrade_price:
+                raise ValidationError(
+                    "Upgrade price can only be set when the component is marked as upgradeable."
+                )
+    
+    def _is_operationally_used(self):
+        """
+        Future hook.
+        Later this will check POS orders / sale orders / kitchen orders.
+        For now, no combo line is considered used.
+        """
+        self.ensure_one()
+        return False
+    
+
+    def unlink(self):
+        for line in self:
+            if line._is_operationally_used():
+                raise ValidationError(
+                    "You cannot delete a combo component after it has been used operationally."
+                )
+
+        return super().unlink()
+        

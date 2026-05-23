@@ -4,3 +4,5 @@ access_restaurant_addon_item_user,restaurant.addon.item.user,model_restaurant_ad
 access_restaurant_product_addon_group_user,restaurant.product.addon.group.user,model_restaurant_product_addon_group,base.group_user,1,1,1,1
 access_restaurant_addon_item_ingredient_user,restaurant.addon.item.ingredient.user,model_restaurant_addon_item_ingredient,base.group_user,1,1,1,1
 access_restaurant_combo_line_user,access.restaurant.combo.line.user,model_restaurant_combo_line,base.group_user,1,1,1,1
+access_restaurant_branch_availability_log_user,access.restaurant.branch.availability.log.user,model_restaurant_branch_availability_log,base.group_user,1,0,0,0
+access_restaurant_branch_availability_bulk_wizard_ops,restaurant.branch.availability.bulk.wizard.ops,model_restaurant_branch_availability_bulk_wizard,restaurant_base.group_restaurant_operations_manager,1,1,1,1

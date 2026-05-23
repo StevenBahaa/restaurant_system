@@ -53,7 +53,12 @@ class ProductTemplate(models.Model):
         for product in self:
             product.recipe_count = len(product.recipe_ids)
 
-    @api.depends("recipe_ids.total_cost")
+    @api.depends(
+        "recipe_ids",
+        "recipe_ids.total_cost",
+        "recipe_ids.state",
+        "recipe_ids.active",
+    )
     def _compute_recipe_cost(self):
         for product in self:
             active_recipe = product.recipe_ids.filtered(
@@ -83,7 +88,7 @@ class ProductTemplate(models.Model):
             else:
                 product.food_cost_percent = 0.0 
 
-    @api.constrains("list_price", "recipe_cost", "is_menu_item")
+    @api.constrains("list_price", "is_menu_item")
     def _check_recipe_cost_vs_sales_price(self):
         for product in self:
             if (
@@ -94,3 +99,28 @@ class ProductTemplate(models.Model):
                 raise ValidationError(
                     "Sales price cannot be lower than recipe cost."
                 )
+
+    def _get_approved_recipe_for_product(self, product_tmpl):
+        self.ensure_one()
+
+        if not product_tmpl:
+            return self.env["restaurant.recipe"]
+
+        return self.env["restaurant.recipe"].search([
+            ("product_tmpl_id", "=", product_tmpl.id),
+            ("state", "=", "approved"),
+        ], limit=1)
+
+
+    def _get_combo_component_resolved_cost(self, component_product):
+        self.ensure_one()
+
+        if not component_product:
+            return 0.0
+
+        approved_recipe = self._get_approved_recipe_for_product(component_product)
+
+        if approved_recipe:
+            return approved_recipe.total_cost
+
+        return component_product.standard_price

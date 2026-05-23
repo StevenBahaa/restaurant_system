@@ -5,8 +5,13 @@
     "category": "Restaurant",
     "author": "Steven Bahaa",
     "license": "LGPL-3",
-    "depends": ["product"],
-    "data": ["views/restaurant_menus.xml"],
+    "depends": ["base", "product", "stock"],
+    "data": [
+        "security/restaurant_security.xml",
+        "security/ir.model.access.csv",
+        "views/restaurant_menus.xml",
+        "views/restaurant_branch_views.xml",
+    ],
     "installable": True,
     "application": True,
 }

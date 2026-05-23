@@ -17,7 +17,7 @@
             </xpath>
 
             <xpath expr="//page[@name='general_information']//group" position="inside">
-                <group string="Recipe &amp; Costing" invisible="not is_menu_item">
+                <group string="Recipe &amp; Costing" invisible="not is_menu_item or restaurant_product_type not in ['prepared_meal', 'beverage', 'ready_item', 'semi_finished']">
                     <field name="recipe_cost" readonly="1" />
                     <field name="food_cost_percent" readonly="1" />
                 </group>
@@ -28,7 +28,7 @@
                 <widget name="web_ribbon"
                     title="Missing Approved Recipe"
                     bg_color="text-bg-warning"
-                    invisible="not is_menu_item or restaurant_product_type != 'prepared_meal' or has_approved_recipe" />
+                    invisible="not is_menu_item or restaurant_product_type not in ['prepared_meal', 'beverage', 'ready_item', 'semi_finished'] or has_approved_recipe" />
             </xpath>
 
         </field>

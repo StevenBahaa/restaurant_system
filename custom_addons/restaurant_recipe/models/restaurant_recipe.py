@@ -18,7 +18,7 @@ class RestaurantRecipe(models.Model):
         help="Product this recipe is for.",
         domain=[
             ("is_menu_item", "=", True),
-            ("restaurant_product_type", "=", "prepared_meal"),
+            ("restaurant_product_type", "in", ["prepared_meal", "beverage", "ready_item", "semi_finished"]),
         ],
     )
 
@@ -238,7 +238,7 @@ class RestaurantRecipeLine(models.Model):
         string="Ingredient",
         required=True,
         domain=[
-            ("restaurant_product_type", "=", "ingredient"),
+            ("restaurant_product_type", "in", ["ingredient", "packaging"]),
         ],
     )
 
@@ -305,7 +305,7 @@ class RestaurantRecipeLine(models.Model):
                 line.quantity * line.wastage_percent / 100.0
             )
 
-    @api.depends("ingredient_product_id")
+    @api.depends("ingredient_product_id", "ingredient_product_id.standard_price")
     def _compute_ingredient_cost(self):
         for line in self:
             line.ingredient_cost = line.ingredient_product_id.standard_price or 0.0
