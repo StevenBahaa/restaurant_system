@@ -646,3 +646,120 @@ class ProductTemplate(models.Model):
             "available": True,
             "reason": False,
         }
+
+    # ──────────────────────────────────────────────────────────────────
+    # UC-08 Step 3 — Branch Availability Resolver
+    # ──────────────────────────────────────────────────────────────────
+
+    def _is_available_in_branch(self, branch, check_date=None):
+        """Return True if the product is available in the given branch on
+        the given date, False otherwise.
+
+        This is a context-specific domain method (not a stored field)
+        because availability depends on which branch and which date the
+        caller is asking about.
+        """
+        self.ensure_one()
+
+        if check_date is None:
+            check_date = fields.Date.context_today(self)
+
+        # A) Product must be active
+        if not self.active:
+            return False
+
+        # B) Product must be sellable
+        if not self.sale_ok:
+            return False
+
+        # C) Branch must be provided
+        if not branch:
+            return False
+
+        # D) Branch must be active
+        if not branch.active:
+            return False
+
+        # E) Date range checks
+        if self.branch_available_from and check_date < self.branch_available_from:
+            return False
+        if self.branch_available_until and check_date > self.branch_available_until:
+            return False
+
+        # F) Mode checks
+        if self.branch_availability_mode == "all_branches":
+            return True
+        if self.branch_availability_mode == "selected_branches":
+            return branch in self.branch_available_ids
+        if self.branch_availability_mode == "excluded_branches":
+            return branch not in self.branch_excluded_ids
+
+        # G) Fallback
+        return False
+
+    def _get_branch_unavailability_reason(self, branch, check_date=None):
+        """Return a human-readable reason string if the product is *not*
+        available in the given branch, or False if it *is* available.
+
+        Reason priority follows the same order as the resolver checks so
+        callers always get the most specific explanation first.
+        """
+        self.ensure_one()
+
+        if check_date is None:
+            check_date = fields.Date.context_today(self)
+
+        # A) Archived product
+        if not self.active:
+            return "Product is archived."
+
+        # B) Not sellable
+        if not self.sale_ok:
+            return "Product is not sellable."
+
+        # C) Missing branch
+        if not branch:
+            return "Branch is required."
+
+        # D) Archived branch
+        if not branch.active:
+            return "Branch is archived."
+
+        # E) Date range
+        if self.branch_available_from and check_date < self.branch_available_from:
+            return "Product is not available before %s." % self.branch_available_from
+
+        if self.branch_available_until and check_date > self.branch_available_until:
+            return "Product is not available after %s." % self.branch_available_until
+
+        # F-G) Mode checks
+        if self.branch_availability_mode == "selected_branches":
+            if branch not in self.branch_available_ids:
+                return self.branch_unavailable_reason or "Product is not available in this branch."
+
+        if self.branch_availability_mode == "excluded_branches":
+            if branch in self.branch_excluded_ids:
+                return self.branch_unavailable_reason or "Product is excluded from this branch."
+
+        # Available — no reason
+        if self._is_available_in_branch(branch, check_date):
+            return False
+
+        # I) Fallback
+        return "Product is not available in this branch."
+
+    def _get_branch_availability_payload(self, branch, check_date=None):
+        """Return a dict summarising the availability status of this
+        product in the given branch.  Designed as a stable contract for
+        future POS / backend integration layers.
+        """
+        self.ensure_one()
+        available = self._is_available_in_branch(branch, check_date)
+        reason = self._get_branch_unavailability_reason(branch, check_date) if not available else ""
+        return {
+            "product_tmpl_id": self.id,
+            "branch_id": branch.id if branch else False,
+            "available": available,
+            "reason": reason or "",
+            "mode": self.branch_availability_mode,
+        }
