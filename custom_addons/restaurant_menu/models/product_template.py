@@ -15,6 +15,54 @@ class ProductTemplate(models.Model):
         help="Arabic display name used for Arabic receipts, local UI, and restaurant operations.",
     )
 
+    branch_availability_mode = fields.Selection(
+        [
+            ("all_branches", "All Branches"),
+            ("selected_branches", "Selected Branches Only"),
+            ("excluded_branches", "All Branches Except Excluded"),
+        ],
+        string="Branch Availability Mode",
+        default="all_branches",
+        required=True,
+        tracking=True,
+    )
+    branch_available_ids = fields.Many2many(
+        "restaurant.branch",
+        "restaurant_product_branch_available_rel",
+        "product_tmpl_id",
+        "branch_id",
+        string="Available Branches",
+    )
+    branch_excluded_ids = fields.Many2many(
+        "restaurant.branch",
+        "restaurant_product_branch_excluded_rel",
+        "product_tmpl_id",
+        "branch_id",
+        string="Excluded Branches",
+    )
+    branch_available_from = fields.Date(
+        string="Available From",
+        tracking=True,
+    )
+    branch_available_until = fields.Date(
+        string="Available Until",
+        tracking=True,
+    )
+    branch_unavailable_reason = fields.Text(
+        string="Branch Availability Status Reason",
+        tracking=True,
+    )
+    branch_availability_last_changed_by = fields.Many2one(
+        "res.users",
+        string="Availability Last Changed By",
+        readonly=True,
+    )
+    branch_availability_last_changed_on = fields.Datetime(
+        string="Availability Last Changed On",
+        readonly=True,
+    )
+
+
     restaurant_product_type = fields.Selection(
         [
             ("prepared_meal", "Prepared Meal"),
@@ -327,6 +375,39 @@ class ProductTemplate(models.Model):
             if product.restaurant_product_type == "combo" and product.list_price <= 0:
                 raise ValidationError("Combo price must be greater than zero.")
 
+    @api.onchange('branch_availability_mode')
+    def _onchange_branch_availability_mode(self):
+        if self.branch_availability_mode == 'all_branches':
+            self.branch_available_ids = [(5, 0, 0)]
+            self.branch_excluded_ids = [(5, 0, 0)]
+        elif self.branch_availability_mode == 'selected_branches':
+            self.branch_excluded_ids = [(5, 0, 0)]
+        elif self.branch_availability_mode == 'excluded_branches':
+            self.branch_available_ids = [(5, 0, 0)]
+
+    @api.constrains('branch_available_from', 'branch_available_until')
+    def _check_branch_availability_from_until(self):
+        for product in self:
+            if product.branch_available_from and product.branch_available_until:
+                if product.branch_available_from > product.branch_available_until:
+                    raise ValidationError("Available From date must be before or equal to Available Until date.")
+
+    @api.constrains('branch_availability_mode', 'branch_available_ids', 'branch_excluded_ids')
+    def _check_branch_availability_requirements(self):
+        for product in self:
+            if product.branch_availability_mode == 'selected_branches' and not product.branch_available_ids:
+                raise ValidationError("At least one branch must be selected for 'Selected Branches Only' availability mode.")
+            if product.branch_availability_mode == 'excluded_branches' and not product.branch_excluded_ids:
+                raise ValidationError("At least one branch must be excluded for 'All Branches Except Excluded' availability mode.")
+
+    @api.constrains('branch_available_ids', 'branch_excluded_ids')
+    def _check_branch_availability_no_overlap(self):
+        for product in self:
+            overlap = set(product.branch_available_ids.ids) & set(product.branch_excluded_ids.ids)
+            if overlap:
+                raise ValidationError("Available and Excluded branches must not overlap.")
+
+
 
     def _check_combo_operational_validity(self):
         for product in self:
@@ -343,7 +424,39 @@ class ProductTemplate(models.Model):
         return True
 
     def write(self, vals):
+        availability_fields = {
+            "branch_availability_mode",
+            "branch_available_ids",
+            "branch_excluded_ids",
+            "branch_available_from",
+            "branch_available_until",
+            "branch_unavailable_reason",
+        }
+
+        has_availability_changes = any(f in vals for f in availability_fields)
+        if has_availability_changes:
+            vals["branch_availability_last_changed_by"] = self.env.user.id
+            vals["branch_availability_last_changed_on"] = fields.Datetime.now()
+
         res = super().write(vals)
+
+        if has_availability_changes:
+            for record in self:
+                clean_vals = {}
+                if record.branch_availability_mode == "all_branches":
+                    if record.branch_available_ids:
+                        clean_vals["branch_available_ids"] = [(5, 0, 0)]
+                    if record.branch_excluded_ids:
+                        clean_vals["branch_excluded_ids"] = [(5, 0, 0)]
+                elif record.branch_availability_mode == "selected_branches":
+                    if record.branch_excluded_ids:
+                        clean_vals["branch_excluded_ids"] = [(5, 0, 0)]
+                elif record.branch_availability_mode == "excluded_branches":
+                    if record.branch_available_ids:
+                        clean_vals["branch_available_ids"] = [(5, 0, 0)]
+
+                if clean_vals:
+                    super(ProductTemplate, record).write(clean_vals)
 
         validation_trigger_fields = {
             "active",
@@ -371,8 +484,32 @@ class ProductTemplate(models.Model):
 
         return res
 
+
     @api.model_create_multi
     def create(self, vals_list):
+        availability_fields = {
+            "branch_availability_mode",
+            "branch_available_ids",
+            "branch_excluded_ids",
+            "branch_available_from",
+            "branch_available_until",
+            "branch_unavailable_reason",
+        }
+
+        for vals in vals_list:
+            mode = vals.get("branch_availability_mode", "all_branches")
+            if mode == "all_branches":
+                vals["branch_available_ids"] = [(5, 0, 0)]
+                vals["branch_excluded_ids"] = [(5, 0, 0)]
+            elif mode == "selected_branches":
+                vals["branch_excluded_ids"] = [(5, 0, 0)]
+            elif mode == "excluded_branches":
+                vals["branch_available_ids"] = [(5, 0, 0)]
+
+            if any(f in vals for f in availability_fields):
+                vals["branch_availability_last_changed_by"] = self.env.user.id
+                vals["branch_availability_last_changed_on"] = fields.Datetime.now()
+
         products = super().create(vals_list)
 
         for product in products:
@@ -380,6 +517,7 @@ class ProductTemplate(models.Model):
                 product._check_combo_operational_validity()
 
         return products
+
     
     def _is_combo_operationally_used(self):
         """

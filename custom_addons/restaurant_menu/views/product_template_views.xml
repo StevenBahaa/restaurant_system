@@ -133,6 +133,40 @@
                     </group>
 
                 </page>
+
+                <page string="Branch Availability" name="branch_availability" invisible="not is_menu_item">
+                    <div class="alert alert-info" role="alert">
+                        <strong>Branch Availability Information:</strong>
+                        <br />
+                        These rules determine which restaurant branches can sell or offer this item. They work alongside the global active and sellable status.
+                    </div>
+                    <group>
+                        <group string="Availability Rule">
+                            <field name="branch_availability_mode" widget="radio" />
+                            <label for="branch_available_from" string="Availability Dates"/>
+                            <div class="o_row">
+                                <field name="branch_available_from" class="oe_inline" placeholder="Start Date"/>
+                                <span>to</span>
+                                <field name="branch_available_until" class="oe_inline" placeholder="End Date"/>
+                            </div>
+                        </group>
+                        <group string="Availability Reason">
+                            <field name="branch_unavailable_reason" placeholder="Reason why this item is unavailable at certain branches..."/>
+                        </group>
+                    </group>
+                    <group string="Selected Branches" invisible="branch_availability_mode != 'selected_branches'">
+                        <field name="branch_available_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}"/>
+                    </group>
+                    <group string="Excluded Branches" invisible="branch_availability_mode != 'excluded_branches'">
+                        <field name="branch_excluded_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}"/>
+                    </group>
+                    <group string="Audit" name="availability_audit">
+                        <group>
+                            <field name="branch_availability_last_changed_by" />
+                            <field name="branch_availability_last_changed_on" />
+                        </group>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>
