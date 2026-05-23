@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_restaurant_branch_availability_bulk_wizard_form" model="ir.ui.view">
+        <field name="name">restaurant.branch.availability.bulk.wizard.form</field>
+        <field name="model">restaurant.branch.availability.bulk.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Bulk Branch Availability">
+                <div class="alert alert-info" role="alert">
+                    This wizard applies branch availability rules to multiple menu products. Existing branch availability settings on selected products will be replaced.
+                </div>
+                <group string="Products">
+                    <field name="product_tmpl_ids" widget="many2many_tags" placeholder="Select products..."/>
+                    <field name="product_count" readonly="1"/>
+                </group>
+                <group string="Availability Rule">
+                    <field name="branch_availability_mode"/>
+                    <field name="branch_available_ids" widget="many2many_tags" 
+                           invisible="branch_availability_mode != 'selected_branches'"
+                           required="branch_availability_mode == 'selected_branches'"/>
+                    <field name="branch_excluded_ids" widget="many2many_tags" 
+                           invisible="branch_availability_mode != 'excluded_branches'"
+                           required="branch_availability_mode == 'excluded_branches'"/>
+                </group>
+                <group string="Optional Details">
+                    <field name="apply_dates"/>
+                    <field name="branch_available_from" invisible="not apply_dates"/>
+                    <field name="branch_available_until" invisible="not apply_dates"/>
+                    <field name="apply_reason"/>
+                    <field name="branch_unavailable_reason" invisible="not apply_reason"/>
+                </group>
+                <footer>
+                    <button string="Apply" type="object" name="action_apply_branch_availability" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="z"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_restaurant_branch_availability_bulk_wizard" model="ir.actions.act_window">
+        <field name="name">Bulk Branch Availability</field>
+        <field name="res_model">restaurant.branch.availability.bulk.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_restaurant_branch_availability_bulk_wizard"
+              name="Bulk Branch Availability"
+              action="action_restaurant_branch_availability_bulk_wizard"
+              parent="restaurant_base.restaurant_menu_configuration"
+              sequence="30"
+              groups="restaurant_base.group_restaurant_operations_manager"/>
+</odoo>
