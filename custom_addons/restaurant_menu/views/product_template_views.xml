@@ -166,6 +166,21 @@
                             <field name="branch_availability_last_changed_on" />
                         </group>
                     </group>
+                    <group string="Change History" name="change_history">
+                        <field name="branch_availability_log_ids" readonly="1" nolabel="1">
+                            <list create="0" edit="0" delete="0">
+                                <field name="changed_on" />
+                                <field name="changed_by_id" />
+                                <field name="old_mode" />
+                                <field name="new_mode" />
+                                <field name="old_available_branch_names" />
+                                <field name="new_available_branch_names" />
+                                <field name="old_excluded_branch_names" />
+                                <field name="new_excluded_branch_names" />
+                                <field name="change_summary" />
+                            </list>
+                        </field>
+                    </group>
                 </page>
             </xpath>
         </field>

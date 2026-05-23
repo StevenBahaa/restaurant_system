@@ -61,6 +61,12 @@ class ProductTemplate(models.Model):
         string="Availability Last Changed On",
         readonly=True,
     )
+    branch_availability_log_ids = fields.One2many(
+        "restaurant.branch.availability.log",
+        "product_tmpl_id",
+        string="Branch Availability Logs",
+        readonly=True,
+    )
 
 
     restaurant_product_type = fields.Selection(
@@ -451,9 +457,13 @@ class ProductTemplate(models.Model):
         }
 
         has_availability_changes = any(f in vals for f in availability_fields)
+        
+        old_snapshots = {}
         if has_availability_changes:
             vals["branch_availability_last_changed_by"] = self.env.user.id
             vals["branch_availability_last_changed_on"] = fields.Datetime.now()
+            for record in self:
+                old_snapshots[record.id] = record._get_availability_snapshot()
 
         res = super().write(vals)
 
@@ -474,6 +484,12 @@ class ProductTemplate(models.Model):
 
                 if clean_vals:
                     super(ProductTemplate, record).write(clean_vals)
+
+            for record in self:
+                old_snap = old_snapshots.get(record.id)
+                if old_snap:
+                    new_snap = record._get_availability_snapshot()
+                    record._create_availability_log(old_snap, new_snap)
 
         validation_trigger_fields = {
             "active",
@@ -763,3 +779,98 @@ class ProductTemplate(models.Model):
             "reason": reason or "",
             "mode": self.branch_availability_mode,
         }
+
+    # ──────────────────────────────────────────────────────────────────
+    # UC-08 Step 5 — Branch Availability Logging Helpers
+    # ──────────────────────────────────────────────────────────────────
+
+    def _format_branch_names(self, branches):
+        if not branches:
+            return ""
+        names = sorted(branches.with_context(active_test=False).mapped("name"))
+        return ", ".join(names)
+
+    def _get_availability_mode_label(self, mode):
+        labels = {
+            "all_branches": "Available in All Branches",
+            "selected_branches": "Available Only in Selected Branches",
+            "excluded_branches": "All Branches Except Excluded",
+        }
+        return labels.get(mode, mode)
+
+    def _get_availability_snapshot(self):
+        self.ensure_one()
+        record_wf = self.with_context(active_test=False)
+        return {
+            "mode": record_wf.branch_availability_mode,
+            "available_branches": self._format_branch_names(record_wf.branch_available_ids),
+            "excluded_branches": self._format_branch_names(record_wf.branch_excluded_ids),
+            "available_from": record_wf.branch_available_from,
+            "available_until": record_wf.branch_available_until,
+            "unavailable_reason": record_wf.branch_unavailable_reason or "",
+        }
+
+    def _create_availability_log(self, old_snapshot, new_snapshot):
+        self.ensure_one()
+        
+        mode_changed = old_snapshot["mode"] != new_snapshot["mode"]
+        available_changed = old_snapshot["available_branches"] != new_snapshot["available_branches"]
+        excluded_changed = old_snapshot["excluded_branches"] != new_snapshot["excluded_branches"]
+        from_changed = old_snapshot["available_from"] != new_snapshot["available_from"]
+        until_changed = old_snapshot["available_until"] != new_snapshot["available_until"]
+        reason_changed = old_snapshot["unavailable_reason"] != new_snapshot["unavailable_reason"]
+
+        if not (mode_changed or available_changed or excluded_changed or from_changed or until_changed or reason_changed):
+            return False
+
+        summary_parts = []
+        if mode_changed:
+            summary_parts.append(
+                f"Mode changed from '{self._get_availability_mode_label(old_snapshot['mode'])}' to '{self._get_availability_mode_label(new_snapshot['mode'])}'."
+            )
+        if available_changed:
+            summary_parts.append(
+                f"Available branches changed from '{old_snapshot['available_branches']}' to '{new_snapshot['available_branches']}'."
+            )
+        if excluded_changed:
+            summary_parts.append(
+                f"Excluded branches changed from '{old_snapshot['excluded_branches']}' to '{new_snapshot['excluded_branches']}'."
+            )
+        if from_changed:
+            old_from = old_snapshot['available_from']
+            new_from = new_snapshot['available_from']
+            summary_parts.append(
+                f"Available From changed from '{old_from or ''}' to '{new_from or ''}'."
+            )
+        if until_changed:
+            old_until = old_snapshot['available_until']
+            new_until = new_snapshot['available_until']
+            summary_parts.append(
+                f"Available Until changed from '{old_until or ''}' to '{new_until or ''}'."
+            )
+        if reason_changed:
+            summary_parts.append(
+                f"Unavailable reason changed from '{old_snapshot['unavailable_reason']}' to '{new_snapshot['unavailable_reason']}'."
+            )
+
+        change_summary = " ".join(summary_parts)
+
+        return self.env["restaurant.branch.availability.log"].create({
+            "product_tmpl_id": self.id,
+            "changed_by_id": self.env.user.id,
+            "changed_on": fields.Datetime.now(),
+            "old_mode": self._get_availability_mode_label(old_snapshot["mode"]),
+            "new_mode": self._get_availability_mode_label(new_snapshot["mode"]),
+            "old_available_branch_names": old_snapshot["available_branches"],
+            "new_available_branch_names": new_snapshot["available_branches"],
+            "old_excluded_branch_names": old_snapshot["excluded_branches"],
+            "new_excluded_branch_names": new_snapshot["excluded_branches"],
+            "old_available_from": old_snapshot["available_from"],
+            "new_available_from": new_snapshot["available_from"],
+            "old_available_until": old_snapshot["available_until"],
+            "new_available_until": new_snapshot["available_until"],
+            "old_unavailable_reason": old_snapshot["unavailable_reason"],
+            "new_unavailable_reason": new_snapshot["unavailable_reason"],
+            "change_summary": change_summary,
+        })
+
