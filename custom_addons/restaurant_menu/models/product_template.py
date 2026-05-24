@@ -985,4 +985,3 @@ class ProductTemplate(models.Model):
             "new_unavailable_reason": new_snapshot["unavailable_reason"],
             "change_summary": change_summary,
         })
-
