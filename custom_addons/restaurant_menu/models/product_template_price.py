@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
+from odoo.exceptions import AccessError
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
@@ -14,6 +15,26 @@ class ProductTemplate(models.Model):
         'product_tmpl_id',
         string='Price History'
     )
+
+    def write(self, vals):
+        if 'branch_price_line_ids' in vals:
+            if not self.env.su and not (
+                self.env.user.has_group('restaurant_base.group_restaurant_operations_manager') or
+                self.env.user.has_group('restaurant_menu.group_restaurant_pricing_manager')
+            ):
+                raise AccessError("You do not have permission to modify branch/channel pricing.")
+        return super().write(vals)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if 'branch_price_line_ids' in vals:
+                if not self.env.su and not (
+                    self.env.user.has_group('restaurant_base.group_restaurant_operations_manager') or
+                    self.env.user.has_group('restaurant_menu.group_restaurant_pricing_manager')
+                ):
+                    raise AccessError("You do not have permission to modify branch/channel pricing.")
+        return super().create(vals_list)
     branch_pricing_has_below_cost = fields.Boolean(
         string='Has Below-Cost Prices',
         compute='_compute_branch_pricing_below_cost',
@@ -24,6 +45,67 @@ class ProductTemplate(models.Model):
         compute='_compute_branch_pricing_below_cost',
         store=False,
     )
+    branch_pricing_rule_count = fields.Integer(
+        string='Active Branch Pricing Rules Count',
+        compute='_compute_branch_pricing_summary',
+        store=False,
+    )
+    branch_pricing_has_active_rules = fields.Boolean(
+        string='Has Active Branch Pricing',
+        compute='_compute_branch_pricing_summary',
+        search='_search_branch_pricing_has_active_rules',
+        store=False,
+    )
+    branch_pricing_has_future_rules = fields.Boolean(
+        string='Has Scheduled Future Pricing',
+        compute='_compute_branch_pricing_summary',
+        search='_search_branch_pricing_has_future_rules',
+        store=False,
+    )
+    branch_pricing_summary = fields.Char(
+        string='Branch Pricing Summary',
+        compute='_compute_branch_pricing_summary',
+        store=False,
+    )
+
+    @api.depends('branch_price_line_ids.active', 'branch_price_line_ids.date_from', 'branch_pricing_has_below_cost', 'branch_pricing_below_cost_count')
+    def _compute_branch_pricing_summary(self):
+        today = fields.Date.context_today(self)
+        for record in self:
+            active_lines = record.branch_price_line_ids.filtered(lambda l: l.active)
+            rule_count = len(active_lines)
+            has_future = any(l.date_from and l.date_from > today for l in active_lines)
+            
+            record.branch_pricing_rule_count = rule_count
+            record.branch_pricing_has_active_rules = rule_count > 0
+            record.branch_pricing_has_future_rules = has_future
+
+            if rule_count == 0:
+                record.branch_pricing_summary = "No branch/channel pricing overrides"
+            else:
+                parts = [f"{rule_count} active pricing rule{'s' if rule_count != 1 else ''}"]
+                if record.branch_pricing_below_cost_count > 0:
+                    parts.append(f"{record.branch_pricing_below_cost_count} below-cost warning{'s' if record.branch_pricing_below_cost_count != 1 else ''}")
+                if has_future:
+                    parts.append("scheduled future price changes")
+                record.branch_pricing_summary = ", ".join(parts)
+
+    def _search_branch_pricing_has_active_rules(self, operator, value):
+        if operator == '=' and value:
+            return [('branch_price_line_ids.active', '=', True)]
+        elif operator == '=' and not value:
+            return [('branch_price_line_ids.active', '!=', True)]
+        return []
+
+    def _search_branch_pricing_has_future_rules(self, operator, value):
+        today = fields.Date.context_today(self)
+        if operator == '=' and value:
+            lines = self.env['restaurant.branch.price.line'].sudo().search([
+                ('active', '=', True),
+                ('date_from', '>', today),
+            ])
+            return [('id', 'in', lines.mapped('product_tmpl_id').ids)]
+        return [('id', '=', False)]
 
     @api.depends('branch_price_line_ids.is_below_cost', 'branch_price_line_ids.active')
     def _compute_branch_pricing_below_cost(self):

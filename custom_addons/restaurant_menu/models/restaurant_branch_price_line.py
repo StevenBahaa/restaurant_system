@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, AccessError
 
 class RestaurantBranchPriceLine(models.Model):
     _name = 'restaurant.branch.price.line'
@@ -107,8 +107,16 @@ class RestaurantBranchPriceLine(models.Model):
                 domain.append(('company_id', 'in', [False, record.product_tmpl_id.company_id.id]))
             record.allowed_branch_ids = self.env['restaurant.branch'].search(domain)
 
+    def _check_pricing_permissions(self):
+        if self.env.su:
+            return
+        if not (self.env.user.has_group('restaurant_base.group_restaurant_operations_manager') or
+                self.env.user.has_group('restaurant_menu.group_restaurant_pricing_manager')):
+            raise AccessError("You do not have permission to modify branch/channel pricing.")
+
     @api.model_create_multi
     def create(self, vals_list):
+        self._check_pricing_permissions()
         for vals in vals_list:
             if vals.get('product_tmpl_id'):
                 product_tmpl = self.env['product.template'].browse(vals['product_tmpl_id'])
@@ -141,6 +149,7 @@ class RestaurantBranchPriceLine(models.Model):
         return records
 
     def write(self, vals):
+        self._check_pricing_permissions()
         if 'product_tmpl_id' in vals:
             product_tmpl = self.env['product.template'].browse(vals['product_tmpl_id'])
             vals['company_id'] = product_tmpl.company_id.id or self.env.company.id
@@ -277,3 +286,7 @@ class RestaurantBranchPriceLine(models.Model):
             overlaps = self.search(domain, limit=1)
             if overlaps:
                 raise ValidationError("Another active price rule already overlaps this product, branch, channel, and date range.")
+
+    def unlink(self):
+        self._check_pricing_permissions()
+        return super().unlink()

@@ -18,11 +18,13 @@ Phase 1 - UC-01:
         "point_of_sale"
     ],
     "data": [
+        "security/restaurant_menu_security.xml",
         "security/ir.model.access.csv",
         "views/product_template_views.xml",
         "views/pos_category_views.xml",
         "views/restaurant_addon_views.xml",
         "wizard/restaurant_branch_availability_bulk_wizard_views.xml",
+        "wizard/restaurant_branch_price_bulk_wizard_views.xml",
     ],
     "installable": True,
     "application": False,

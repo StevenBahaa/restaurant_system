@@ -74,6 +74,42 @@ class ProductTemplate(models.Model):
         "restaurant.branch",
         compute="_compute_allowed_branch_ids",
     )
+    branch_availability_selectable_branch_ids = fields.Many2many(
+        "restaurant.branch",
+        compute="_compute_branch_availability_selectable_branch_ids",
+    )
+    can_edit_global_branch_availability = fields.Boolean(
+        compute="_compute_can_edit_global_branch_availability",
+    )
+
+    def _compute_can_edit_global_branch_availability(self):
+        can_edit = self.env.su or self.env.user.has_group("restaurant_base.group_restaurant_operations_manager")
+        for record in self:
+            record.can_edit_global_branch_availability = can_edit
+
+    @api.depends("company_id")
+    @api.depends_context("uid")
+    def _compute_branch_availability_selectable_branch_ids(self):
+        is_admin = self.env.su
+        is_ops_manager = self.env.user.has_group("restaurant_base.group_restaurant_operations_manager")
+        is_company_manager = self.env.user.has_group("restaurant_base.group_restaurant_company_availability_manager")
+        is_branch_manager = self.env.user.has_group("restaurant_base.group_restaurant_branch_manager")
+
+        for record in self:
+            domain = [("active", "=", True)]
+            if record.company_id:
+                domain.append(("company_id", "=", record.company_id.id))
+
+            if not is_admin:
+                domain.append(("company_id", "in", self.env.user.company_ids.ids))
+
+            if is_admin or is_ops_manager or is_company_manager:
+                record.branch_availability_selectable_branch_ids = self.env["restaurant.branch"].search(domain)
+            elif is_branch_manager:
+                managed_domain = domain + [("manager_user_ids", "in", self.env.user.id)]
+                record.branch_availability_selectable_branch_ids = self.env["restaurant.branch"].search(managed_domain)
+            else:
+                record.branch_availability_selectable_branch_ids = self.env["restaurant.branch"].browse()
 
     @api.depends("company_id")
     def _compute_allowed_branch_ids(self):
@@ -144,70 +180,101 @@ class ProductTemplate(models.Model):
             "branch_unavailable_reason",
         }
 
-    def _user_can_manage_all_branch_availability(self):
-        return self.env.user.has_group("restaurant_base.group_restaurant_operations_manager") or self.env.su
+    def _resolve_m2m_commands(self, current_records, commands):
+        if not commands:
+            return current_records
+        result = set(current_records.ids)
+        for command in commands:
+            if command[0] == 6:  # Replace all
+                result = set(command[2])
+            elif command[0] == 4:  # Add
+                result.add(command[1])
+            elif command[0] == 3:  # Remove (no delete)
+                result.discard(command[1])
+            elif command[0] == 5:  # Clear all
+                result.clear()
+        return self.env["restaurant.branch"].browse(list(result))
 
-    def _get_user_managed_branches(self):
-        return self.env["restaurant.branch"].search([("manager_user_ids", "in", self.env.user.id)])
-
-    def _extract_affected_branch_ids(self, command_list):
-        if not command_list:
-            return set()
-        branch_ids = set()
-        for command in command_list:
-            if command[0] in (4, 6):
-                if command[0] == 6:
-                    branch_ids.update(command[2])
-                else:
-                    branch_ids.add(command[1])
-            elif command[0] == 3:
-                branch_ids.add(command[1])
-        return branch_ids
-
-    def _check_user_can_modify_branch_availability(self, vals, is_create=False):
+    def _check_user_can_modify_branch_availability_global(self, vals, is_create=False):
         availability_fields = self._get_branch_availability_fields()
         if not any(f in vals for f in availability_fields):
             return
 
-        if self._user_can_manage_all_branch_availability():
-            return
-
+        is_admin = self.env.su
+        is_ops_manager = self.env.user.has_group("restaurant_base.group_restaurant_operations_manager")
+        is_company_manager = self.env.user.has_group("restaurant_base.group_restaurant_company_availability_manager")
         is_branch_manager = self.env.user.has_group("restaurant_base.group_restaurant_branch_manager")
-        if not is_branch_manager:
+
+        if not (is_admin or is_ops_manager or is_company_manager or is_branch_manager):
             raise ValidationError("You do not have permission to modify branch availability.")
 
-        managed_branches = self._get_user_managed_branches()
+        records = self if not is_create else [self.env["product.template"]]
+        global_fields = {"branch_availability_mode", "branch_available_from", "branch_available_until", "branch_unavailable_reason"}
 
-        if is_create:
-            mode = vals.get("branch_availability_mode", "all_branches")
+        for record in records:
+            for f in global_fields:
+                if f in vals:
+                    if is_create:
+                        # Allow default mode 'all_branches' on create if not explicitly changed
+                        if f == "branch_availability_mode" and vals[f] == "all_branches":
+                            continue
+                        if not (is_admin or is_ops_manager):
+                            raise ValidationError("Only Operations Managers can set the branch availability mode, dates, and reason on creation.")
+                    else:
+                        if vals[f] != getattr(record, f):
+                            if not (is_admin or is_ops_manager):
+                                raise ValidationError("Only Operations Managers can change the branch availability mode, dates, and reason.")
+            
+            mode = vals.get("branch_availability_mode", record.branch_availability_mode if not is_create else "all_branches")
             if mode == "all_branches":
-                raise ValidationError("Branch Managers cannot use 'All Branches' mode.")
+                if not (is_admin or is_ops_manager):
+                    raise ValidationError("Only Operations Managers and Superusers can use 'All Branches' mode.")
+
+    def _preserve_unmanaged_branches(self, record, vals):
+        is_admin = self.env.su
+        is_ops_manager = self.env.user.has_group("restaurant_base.group_restaurant_operations_manager")
+        is_company_manager = self.env.user.has_group("restaurant_base.group_restaurant_company_availability_manager")
+        is_branch_manager = self.env.user.has_group("restaurant_base.group_restaurant_branch_manager")
+
+        for field_name in ["branch_available_ids", "branch_excluded_ids"]:
+            if field_name not in vals:
+                continue
+
+            old_records = getattr(record, field_name)
+            commands = vals[field_name]
+            final_records = self._resolve_m2m_commands(old_records, commands)
             
-            new_available_ids = self._extract_affected_branch_ids(vals.get("branch_available_ids", []))
-            new_excluded_ids = self._extract_affected_branch_ids(vals.get("branch_excluded_ids", []))
-            
-            affected_branches = self.env["restaurant.branch"].browse(list(new_available_ids | new_excluded_ids))
-            unmanaged = affected_branches - managed_branches
-            if unmanaged:
-                raise ValidationError(f"You can only modify availability for branches you manage. Unmanaged: {', '.join(unmanaged.mapped('name'))}")
-        else:
-            for record in self:
-                mode = vals.get("branch_availability_mode", record.branch_availability_mode)
-                if mode == "all_branches":
-                    raise ValidationError("Branch Managers cannot use 'All Branches' mode.")
+            added = final_records - old_records
+            removed = old_records - final_records
 
-                affected_branches = self.env["restaurant.branch"].browse()
-                affected_branches |= record.branch_available_ids
-                affected_branches |= record.branch_excluded_ids
+            # Validate Additions
+            if not is_admin:
+                out_of_company_adds = added.filtered(lambda b: b.company_id.id not in self.env.user.company_ids.ids)
+                if out_of_company_adds:
+                    raise ValidationError(f"You cannot add branches outside your allowed companies: {', '.join(out_of_company_adds.mapped('name'))}")
 
-                new_available_ids = self._extract_affected_branch_ids(vals.get("branch_available_ids", []))
-                new_excluded_ids = self._extract_affected_branch_ids(vals.get("branch_excluded_ids", []))
+            if not (is_admin or is_ops_manager or is_company_manager) and is_branch_manager:
+                unmanaged_adds = added.filtered(lambda b: self.env.user not in b.manager_user_ids)
+                if unmanaged_adds:
+                    raise ValidationError(f"You cannot add branches you do not manage: {', '.join(unmanaged_adds.mapped('name'))}")
 
-                affected_branches |= self.env["restaurant.branch"].browse(list(new_available_ids | new_excluded_ids))
+            company_id = vals.get("company_id", record.company_id.id)
+            if company_id:
+                incompatible = added.filtered(lambda b: b.company_id.id != company_id)
+                if incompatible:
+                    raise ValidationError(f"Selected branches must belong to the same company as the product: {', '.join(incompatible.mapped('name'))}")
 
-                unmanaged = affected_branches - managed_branches
-                if unmanaged:
-                    raise ValidationError(f"You can only modify availability for branches you manage. Unmanaged: {', '.join(unmanaged.mapped('name'))}")
+            # Preserve Removals
+            preserved = self.env["restaurant.branch"]
+            if not is_admin:
+                preserved |= removed.filtered(lambda b: b.company_id.id not in self.env.user.company_ids.ids)
+                
+            if not (is_admin or is_ops_manager or is_company_manager) and is_branch_manager:
+                preserved |= removed.filtered(lambda b: self.env.user not in b.manager_user_ids)
+
+            if preserved:
+                final_with_preserved = final_records | preserved
+                vals[field_name] = [(6, 0, final_with_preserved.ids)]
 
     def _is_available_in_branch(self, branch, check_date=None):
         self.ensure_one()
@@ -445,53 +512,75 @@ class ProductTemplate(models.Model):
         })
 
     def write(self, vals):
-        self._check_user_can_modify_branch_availability(vals, is_create=False)
+        self._check_user_can_modify_branch_availability_global(vals, is_create=False)
 
         availability_fields = self._get_branch_availability_fields()
-
         has_availability_changes = any(f in vals for f in availability_fields)
+
+        if not has_availability_changes:
+            return super().write(vals)
+
+        is_admin = self.env.su
+        is_ops_manager = self.env.user.has_group("restaurant_base.group_restaurant_operations_manager")
         
-        old_snapshots = {}
-        if has_availability_changes:
-            vals["branch_availability_last_changed_by"] = self.env.user.id
-            vals["branch_availability_last_changed_on"] = fields.Datetime.now()
+        if not (is_admin or is_ops_manager) and ("branch_available_ids" in vals or "branch_excluded_ids" in vals):
+            res = True
             for record in self:
-                old_snapshots[record.id] = record._get_availability_snapshot()
+                record_vals = vals.copy()
+                self._preserve_unmanaged_branches(record, record_vals)
+                
+                old_snap = record._get_availability_snapshot()
+                record_vals["branch_availability_last_changed_by"] = self.env.user.id
+                record_vals["branch_availability_last_changed_on"] = fields.Datetime.now()
+                
+                super(ProductTemplate, record).write(record_vals)
+                
+                record._cleanup_availability_modes()
+                new_snap = record._get_availability_snapshot()
+                record._create_availability_log(old_snap, new_snap)
+            return res
+
+        old_snapshots = {}
+        vals["branch_availability_last_changed_by"] = self.env.user.id
+        vals["branch_availability_last_changed_on"] = fields.Datetime.now()
+        for record in self:
+            old_snapshots[record.id] = record._get_availability_snapshot()
 
         res = super().write(vals)
 
-        if has_availability_changes:
-            for record in self:
-                clean_vals = {}
-                if record.branch_availability_mode == "all_branches":
-                    if record.branch_available_ids:
-                        clean_vals["branch_available_ids"] = [(5, 0, 0)]
-                    if record.branch_excluded_ids:
-                        clean_vals["branch_excluded_ids"] = [(5, 0, 0)]
-                elif record.branch_availability_mode == "selected_branches":
-                    if record.branch_excluded_ids:
-                        clean_vals["branch_excluded_ids"] = [(5, 0, 0)]
-                elif record.branch_availability_mode == "excluded_branches":
-                    if record.branch_available_ids:
-                        clean_vals["branch_available_ids"] = [(5, 0, 0)]
-
-                if clean_vals:
-                    super(ProductTemplate, record).write(clean_vals)
-
-            for record in self:
-                old_snap = old_snapshots.get(record.id)
-                if old_snap:
-                    new_snap = record._get_availability_snapshot()
-                    record._create_availability_log(old_snap, new_snap)
+        for record in self:
+            record._cleanup_availability_modes()
+            old_snap = old_snapshots.get(record.id)
+            if old_snap:
+                new_snap = record._get_availability_snapshot()
+                record._create_availability_log(old_snap, new_snap)
 
         return res
+
+    def _cleanup_availability_modes(self):
+        self.ensure_one()
+        clean_vals = {}
+        if self.branch_availability_mode == "all_branches":
+            if self.branch_available_ids:
+                clean_vals["branch_available_ids"] = [(5, 0, 0)]
+            if self.branch_excluded_ids:
+                clean_vals["branch_excluded_ids"] = [(5, 0, 0)]
+        elif self.branch_availability_mode == "selected_branches":
+            if self.branch_excluded_ids:
+                clean_vals["branch_excluded_ids"] = [(5, 0, 0)]
+        elif self.branch_availability_mode == "excluded_branches":
+            if self.branch_available_ids:
+                clean_vals["branch_available_ids"] = [(5, 0, 0)]
+
+        if clean_vals:
+            super(ProductTemplate, self).write(clean_vals)
 
     @api.model_create_multi
     def create(self, vals_list):
         availability_fields = self._get_branch_availability_fields()
 
         for vals in vals_list:
-            self._check_user_can_modify_branch_availability(vals, is_create=True)
+            self._check_user_can_modify_branch_availability_global(vals, is_create=True)
             mode = vals.get("branch_availability_mode", "all_branches")
             if mode == "all_branches":
                 vals["branch_available_ids"] = [(5, 0, 0)]
@@ -500,6 +589,33 @@ class ProductTemplate(models.Model):
                 vals["branch_excluded_ids"] = [(5, 0, 0)]
             elif mode == "excluded_branches":
                 vals["branch_available_ids"] = [(5, 0, 0)]
+
+            # Check additions
+            is_admin = self.env.su
+            is_ops_manager = self.env.user.has_group("restaurant_base.group_restaurant_operations_manager")
+            is_company_manager = self.env.user.has_group("restaurant_base.group_restaurant_company_availability_manager")
+            is_branch_manager = self.env.user.has_group("restaurant_base.group_restaurant_branch_manager")
+
+            for field_name in ["branch_available_ids", "branch_excluded_ids"]:
+                if field_name in vals:
+                    commands = vals[field_name]
+                    final_records = self._resolve_m2m_commands(self.env["restaurant.branch"], commands)
+                    
+                    if not is_admin:
+                        out_of_company_adds = final_records.filtered(lambda b: b.company_id.id not in self.env.user.company_ids.ids)
+                        if out_of_company_adds:
+                            raise ValidationError(f"You cannot add branches outside your allowed companies: {', '.join(out_of_company_adds.mapped('name'))}")
+
+                    if not (is_admin or is_ops_manager or is_company_manager) and is_branch_manager:
+                        unmanaged_adds = final_records.filtered(lambda b: self.env.user not in b.manager_user_ids)
+                        if unmanaged_adds:
+                            raise ValidationError(f"You cannot add branches you do not manage: {', '.join(unmanaged_adds.mapped('name'))}")
+
+                    company_id = vals.get("company_id", False)
+                    if company_id:
+                        incompatible = final_records.filtered(lambda b: b.company_id.id != company_id)
+                        if incompatible:
+                            raise ValidationError(f"Selected branches must belong to the same company as the product: {', '.join(incompatible.mapped('name'))}")
 
             if any(f in vals for f in availability_fields):
                 vals["branch_availability_last_changed_by"] = self.env.user.id
