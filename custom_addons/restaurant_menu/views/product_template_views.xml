@@ -192,20 +192,26 @@
                 </page>
 
                 <page string="Branch Pricing" name="branch_pricing" invisible="not is_menu_item">
+                    <field name="branch_pricing_has_below_cost" invisible="1"/>
                     <div class="alert alert-info" role="alert">
                         <strong>Branch Pricing Rules</strong>
                         <br/>
                         <span class="text-muted">If no branch/channel price rule applies, the product Sales Price is used.</span>
                     </div>
+                    <div class="alert alert-warning" role="alert" invisible="not branch_pricing_has_below_cost">
+                        Some branch/channel prices are below current cost.
+                    </div>
                     <field name="branch_price_line_ids" nolabel="1">
-                        <list editable="bottom">
+                        <list editable="bottom" decoration-danger="is_below_cost">
                             <field name="sequence" widget="handle" />
                             <field name="company_id" column_invisible="True" />
                             <field name="currency_id" column_invisible="True" />
                             <field name="allowed_branch_ids" column_invisible="True" />
+                            <field name="is_below_cost" column_invisible="True" />
                             <field name="branch_id" options="{'no_create': True}" domain="[('id', 'in', allowed_branch_ids)]" />
                             <field name="channel" />
                             <field name="price" />
+                            <field name="cost_reference" readonly="1" force_save="1" />
                             <field name="date_from" />
                             <field name="date_until" />
                             <field name="active" />

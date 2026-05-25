@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields
+from odoo import models, fields, api
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
@@ -9,6 +9,23 @@ class ProductTemplate(models.Model):
         'product_tmpl_id',
         string='Branch Pricing Rules'
     )
+    branch_pricing_has_below_cost = fields.Boolean(
+        string='Has Below-Cost Prices',
+        compute='_compute_branch_pricing_below_cost',
+        store=False,
+    )
+    branch_pricing_below_cost_count = fields.Integer(
+        string='Below-Cost Price Count',
+        compute='_compute_branch_pricing_below_cost',
+        store=False,
+    )
+
+    @api.depends('branch_price_line_ids.is_below_cost', 'branch_price_line_ids.active')
+    def _compute_branch_pricing_below_cost(self):
+        for record in self:
+            below_cost_lines = record.branch_price_line_ids.filtered(lambda l: l.active and l.is_below_cost)
+            record.branch_pricing_below_cost_count = len(below_cost_lines)
+            record.branch_pricing_has_below_cost = len(below_cost_lines) > 0
 
     def _get_matching_branch_price_rule(self, branch=None, channel=None, price_date=None):
         self.ensure_one()

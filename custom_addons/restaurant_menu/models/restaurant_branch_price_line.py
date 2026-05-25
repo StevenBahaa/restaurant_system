@@ -64,6 +64,40 @@ class RestaurantBranchPriceLine(models.Model):
         'restaurant.branch',
         compute='_compute_allowed_branch_ids'
     )
+    cost_reference = fields.Monetary(
+        string='Cost Reference',
+        compute='_compute_below_cost_fields',
+        currency_field='currency_id'
+    )
+    is_below_cost = fields.Boolean(
+        string='Is Below Cost',
+        compute='_compute_below_cost_fields'
+    )
+    below_cost_warning_message = fields.Char(
+        string='Warning Message',
+        compute='_compute_below_cost_fields'
+    )
+
+    @api.depends('price', 'product_tmpl_id', 'product_tmpl_id.standard_price')
+    def _compute_below_cost_fields(self):
+        for record in self:
+            cost = 0.0
+            product = record.product_tmpl_id
+            if product:
+                has_recipe = getattr(product, 'has_approved_recipe', False)
+                recipe_cost = getattr(product, 'recipe_cost', 0.0)
+                if has_recipe:
+                    cost = recipe_cost
+                else:
+                    cost = product.standard_price
+
+            record.cost_reference = cost
+            if cost > 0 and record.price < cost:
+                record.is_below_cost = True
+                record.below_cost_warning_message = "Price is below current cost."
+            else:
+                record.is_below_cost = False
+                record.below_cost_warning_message = ""
 
     @api.depends('product_tmpl_id.company_id')
     def _compute_allowed_branch_ids(self):
