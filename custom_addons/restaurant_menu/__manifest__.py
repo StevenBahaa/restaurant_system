@@ -24,6 +24,7 @@ Phase 1 - UC-01:
         "views/pos_category_views.xml",
         "views/restaurant_addon_views.xml",
         "wizard/restaurant_branch_availability_bulk_wizard_views.xml",
+        "wizard/restaurant_branch_price_bulk_wizard_views.xml",
     ],
     "installable": True,
     "application": False,

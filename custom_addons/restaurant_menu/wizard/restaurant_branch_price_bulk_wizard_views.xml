@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_restaurant_branch_price_bulk_wizard_form" model="ir.ui.view">
+        <field name="name">restaurant.branch.price.bulk.wizard.form</field>
+        <field name="model">restaurant.branch.price.bulk.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Bulk Branch Pricing Update">
+                <field name="company_id" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                
+                <div class="alert alert-info" role="alert">
+                    This wizard applies bulk price updates to the selected menu products.
+                    An exact match rule will be updated, otherwise a new price line will be created.
+                </div>
+
+                <group string="Products">
+                    <field name="product_tmpl_ids" widget="many2many_tags" placeholder="Select products..."/>
+                    <field name="product_count" readonly="1"/>
+                </group>
+
+                <group string="Pricing Scope">
+                    <field name="branch_id" options="{'no_create': True}" placeholder="Select branch..."/>
+                    <field name="channel" placeholder="Select channel..."/>
+                </group>
+
+                <group string="Price Update">
+                    <field name="update_mode" widget="radio"/>
+                    <field name="fixed_price" 
+                           invisible="update_mode != 'set_fixed_price'" 
+                           required="update_mode == 'set_fixed_price'"/>
+                    <field name="amount" 
+                           invisible="update_mode not in ('increase_fixed_amount', 'decrease_fixed_amount')"
+                           required="update_mode in ('increase_fixed_amount', 'decrease_fixed_amount')"/>
+                    <field name="percentage" 
+                           invisible="update_mode not in ('increase_percentage', 'decrease_percentage')"
+                           required="update_mode in ('increase_percentage', 'decrease_percentage')"/>
+                </group>
+
+                <group string="Effective Dates">
+                    <field name="date_from"/>
+                    <field name="date_until"/>
+                </group>
+
+                <group string="Notes">
+                    <field name="note" placeholder="Optional internal note..."/>
+                </group>
+
+                <footer>
+                    <button string="Apply Price Update" type="object" name="action_apply_price_update" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="z"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_restaurant_branch_price_bulk_wizard" model="ir.actions.act_window">
+        <field name="name">Bulk Branch Pricing</field>
+        <field name="res_model">restaurant.branch.price.bulk.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_restaurant_branch_price_bulk_wizard"
+              name="Bulk Branch Pricing"
+              action="action_restaurant_branch_price_bulk_wizard"
+              parent="restaurant_base.restaurant_menu_configuration"
+              sequence="40"
+              groups="restaurant_base.group_restaurant_operations_manager,restaurant_menu.group_restaurant_pricing_manager"/>
+</odoo>
