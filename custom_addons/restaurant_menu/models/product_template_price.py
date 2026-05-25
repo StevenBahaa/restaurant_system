@@ -9,6 +9,11 @@ class ProductTemplate(models.Model):
         'product_tmpl_id',
         string='Branch Pricing Rules'
     )
+    branch_price_history_ids = fields.One2many(
+        'restaurant.branch.price.history',
+        'product_tmpl_id',
+        string='Price History'
+    )
     branch_pricing_has_below_cost = fields.Boolean(
         string='Has Below-Cost Prices',
         compute='_compute_branch_pricing_below_cost',

@@ -115,7 +115,30 @@ class RestaurantBranchPriceLine(models.Model):
                 vals['company_id'] = product_tmpl.company_id.id or self.env.company.id
             elif not vals.get('company_id'):
                 vals['company_id'] = self.env.company.id
-        return super().create(vals_list)
+        
+        records = super().create(vals_list)
+        
+        for record in records:
+            company_id = record.company_id.id or self.env.company.id
+            currency_id = record.currency_id.id or record.company_id.currency_id.id or self.env.company.currency_id.id
+            history_vals = {
+                'product_tmpl_id': record.product_tmpl_id.id,
+                'price_line_id': record.id,
+                'branch_id': record.branch_id.id,
+                'channel': record.channel,
+                'new_price': record.price,
+                'new_date_from': record.date_from,
+                'new_date_until': record.date_until,
+                'new_active': record.active,
+                'company_id': company_id,
+                'currency_id': currency_id,
+                'changed_by_id': self.env.user.id,
+                'changed_on': fields.Datetime.now(),
+                'change_summary': 'Created branch/channel price rule.',
+            }
+            self.env['restaurant.branch.price.history'].sudo().create(history_vals)
+            
+        return records
 
     def write(self, vals):
         if 'product_tmpl_id' in vals:
@@ -123,7 +146,69 @@ class RestaurantBranchPriceLine(models.Model):
             vals['company_id'] = product_tmpl.company_id.id or self.env.company.id
         elif 'company_id' in vals and not vals.get('company_id'):
             vals['company_id'] = self.env.company.id
-        return super().write(vals)
+
+        tracked_fields = ['price', 'branch_id', 'channel', 'date_from', 'date_until', 'active']
+        
+        if not any(f in vals for f in tracked_fields):
+            return super().write(vals)
+            
+        old_values = {}
+        for record in self:
+            old_values[record.id] = {
+                'price': record.price,
+                'branch_id': record.branch_id.id,
+                'channel': record.channel,
+                'date_from': record.date_from,
+                'date_until': record.date_until,
+                'active': record.active,
+            }
+            
+        res = super().write(vals)
+        
+        for record in self:
+            old_vals = old_values[record.id]
+            changed_fields = []
+            
+            for f in tracked_fields:
+                old_v = old_vals[f]
+                new_v = record[f]
+                if f == 'branch_id':
+                    new_v = new_v.id
+                if old_v != new_v:
+                    changed_fields.append(f)
+                    
+            if not changed_fields:
+                continue
+                
+            summary_parts = []
+            for f in changed_fields:
+                summary_parts.append(f"Changed {f}")
+            summary = ", ".join(summary_parts)
+            
+            company_id = record.company_id.id or self.env.company.id
+            currency_id = record.currency_id.id or record.company_id.currency_id.id or self.env.company.currency_id.id
+            history_vals = {
+                'product_tmpl_id': record.product_tmpl_id.id,
+                'price_line_id': record.id,
+                'branch_id': record.branch_id.id,
+                'channel': record.channel,
+                'old_price': old_vals['price'],
+                'new_price': record.price,
+                'old_date_from': old_vals['date_from'],
+                'new_date_from': record.date_from,
+                'old_date_until': old_vals['date_until'],
+                'new_date_until': record.date_until,
+                'old_active': old_vals['active'],
+                'new_active': record.active,
+                'company_id': company_id,
+                'currency_id': currency_id,
+                'changed_by_id': self.env.user.id,
+                'changed_on': fields.Datetime.now(),
+                'change_summary': summary,
+            }
+            self.env['restaurant.branch.price.history'].sudo().create(history_vals)
+            
+        return res
 
     @api.constrains('price')
     def _check_price(self):
