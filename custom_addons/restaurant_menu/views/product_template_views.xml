@@ -189,10 +189,15 @@
 
                 <page string="Branch Pricing" name="branch_pricing" invisible="not is_menu_item">
                     <field name="branch_pricing_has_below_cost" invisible="1"/>
+                    <field name="branch_pricing_has_future_rules" invisible="1"/>
+                    <field name="branch_pricing_summary" invisible="1"/>
                     <div class="alert alert-info" role="alert">
-                        <strong>Branch Pricing Rules</strong>
+                        <strong>Branch Pricing Summary:</strong> <field name="branch_pricing_summary" readonly="1" nolabel="1"/>
                         <br/>
                         <span class="text-muted">If no branch/channel price rule applies, the product Sales Price is used.</span>
+                    </div>
+                    <div class="alert alert-info" role="alert" invisible="not branch_pricing_has_future_rules">
+                        This product has scheduled future branch/channel price changes.
                     </div>
                     <div class="alert alert-warning" role="alert" invisible="not branch_pricing_has_below_cost">
                         Some branch/channel prices are below current cost.
@@ -246,6 +251,9 @@
             <xpath expr="//filter[@name='combo_meals']" position="after">
                 <filter string="Branch Restricted" name="branch_restricted"
                     domain="['|', ('branch_availability_mode', '!=', 'all_branches'), '|', ('branch_available_from', '!=', False), ('branch_available_until', '!=', False)]" />
+                <separator/>
+                <filter string="Has Branch Pricing" name="has_branch_pricing" domain="[('branch_pricing_has_active_rules', '=', True)]"/>
+                <filter string="Scheduled Branch Price Changes" name="scheduled_branch_price_changes" domain="[('branch_pricing_has_future_rules', '=', True)]"/>
             </xpath>
         </field>
     </record>
@@ -263,6 +271,9 @@
                 <field name="is_menu_item" />
                 <field name="branch_availability_has_restriction" />
                 <field name="branch_availability_summary" />
+                <field name="branch_pricing_has_active_rules" />
+                <field name="branch_pricing_has_below_cost" />
+                <field name="branch_pricing_has_future_rules" />
             </xpath>
             <xpath expr="//t[@t-name='card']/main/div[1]" position="inside">
                 <div t-if="record.restaurant_product_type.raw_value == 'combo'" class="d-flex flex-wrap gap-1 mt-1">
@@ -272,6 +283,11 @@
                 </div>
                 <div t-if="record.is_menu_item.raw_value and record.branch_availability_has_restriction.raw_value" class="d-flex flex-wrap gap-1 mt-1">
                     <span class="badge text-bg-warning" t-att-title="record.branch_availability_summary.raw_value">Branch Restricted</span>
+                </div>
+                <div t-if="record.is_menu_item.raw_value and record.branch_pricing_has_active_rules.raw_value" class="d-flex flex-wrap gap-1 mt-1">
+                    <span class="badge text-bg-info">Branch Pricing</span>
+                    <span t-if="record.branch_pricing_has_below_cost.raw_value" class="badge text-bg-danger">Below Cost</span>
+                    <span t-if="record.branch_pricing_has_future_rules.raw_value" class="badge text-bg-primary">Future Price</span>
                 </div>
             </xpath>
         </field>
