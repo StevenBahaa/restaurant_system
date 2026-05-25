@@ -31,6 +31,19 @@ class RestaurantBranch(models.Model):
         string="Branch Managers",
     )
     notes = fields.Text(string="Notes")
+    display_name = fields.Char(
+        compute="_compute_display_name",
+        recursive=True,
+        store=False,
+    )
+
+    @api.depends("name", "company_id.name")
+    def _compute_display_name(self):
+        for record in self:
+            if record.company_id:
+                record.display_name = f"{record.name} ({record.company_id.name})"
+            else:
+                record.display_name = record.name
 
     _sql_constraints = [
         ("code_uniq", "unique(code)", "Branch code must be unique."),

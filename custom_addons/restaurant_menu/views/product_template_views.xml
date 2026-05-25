@@ -135,6 +135,7 @@
                 </page>
 
                 <page string="Branch Availability" name="branch_availability" invisible="not is_menu_item">
+                    <field name="allowed_branch_ids" invisible="1"/>
                     <div class="alert alert-info" role="alert">
                         <strong>Branch availability summary</strong>
                         <br/>
@@ -162,10 +163,10 @@
                         </group>
                     </group>
                     <group string="Selected Branches" invisible="branch_availability_mode != 'selected_branches'">
-                        <field name="branch_available_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('active', '=', True)]"/>
+                        <field name="branch_available_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('id', 'in', allowed_branch_ids)]"/>
                     </group>
                     <group string="Excluded Branches" invisible="branch_availability_mode != 'excluded_branches'">
-                        <field name="branch_excluded_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('active', '=', True)]"/>
+                        <field name="branch_excluded_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('id', 'in', allowed_branch_ids)]"/>
                     </group>
                     <group string="Audit" name="availability_audit">
                         <group>
@@ -184,6 +185,50 @@
                                 <field name="new_available_branch_names" />
                                 <field name="old_excluded_branch_names" />
                                 <field name="new_excluded_branch_names" />
+                                <field name="change_summary" />
+                            </list>
+                        </field>
+                    </group>
+                </page>
+
+                <page string="Branch Pricing" name="branch_pricing" invisible="not is_menu_item">
+                    <field name="branch_pricing_has_below_cost" invisible="1"/>
+                    <div class="alert alert-info" role="alert">
+                        <strong>Branch Pricing Rules</strong>
+                        <br/>
+                        <span class="text-muted">If no branch/channel price rule applies, the product Sales Price is used.</span>
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not branch_pricing_has_below_cost">
+                        Some branch/channel prices are below current cost.
+                    </div>
+                    <field name="branch_price_line_ids" nolabel="1">
+                        <list editable="bottom" decoration-danger="is_below_cost">
+                            <field name="sequence" widget="handle" />
+                            <field name="company_id" column_invisible="True" />
+                            <field name="currency_id" column_invisible="True" />
+                            <field name="allowed_branch_ids" column_invisible="True" />
+                            <field name="is_below_cost" column_invisible="True" />
+                            <field name="branch_id" options="{'no_create': True}" domain="[('id', 'in', allowed_branch_ids)]" />
+                            <field name="channel" />
+                            <field name="price" />
+                            <field name="cost_reference" readonly="1" force_save="1" />
+                            <field name="date_from" />
+                            <field name="date_until" />
+                            <field name="active" />
+                            <field name="note" />
+                        </list>
+                    </field>
+                    <group string="Price History (Audit Log)" name="branch_pricing_history">
+                        <field name="branch_price_history_ids" readonly="1" nolabel="1">
+                            <list create="0" edit="0" delete="0">
+                                <field name="company_id" column_invisible="True" />
+                                <field name="currency_id" column_invisible="True" />
+                                <field name="changed_on" />
+                                <field name="changed_by_id" />
+                                <field name="branch_id" />
+                                <field name="channel" />
+                                <field name="old_price" />
+                                <field name="new_price" />
                                 <field name="change_summary" />
                             </list>
                         </field>

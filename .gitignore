@@ -48,7 +48,13 @@ Thumbs.db
 
 # Test files and local prompts
 docs/
+scripts/
 test_uc07.py
 test_uc07_recipe.py
 last_prompt.txt
+.clinerules
+
+# Temp files
+scratch/
+*.zip
 
