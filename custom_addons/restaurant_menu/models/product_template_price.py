@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
+from odoo.exceptions import AccessError
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
@@ -14,6 +15,26 @@ class ProductTemplate(models.Model):
         'product_tmpl_id',
         string='Price History'
     )
+
+    def write(self, vals):
+        if 'branch_price_line_ids' in vals:
+            if not self.env.su and not (
+                self.env.user.has_group('restaurant_base.group_restaurant_operations_manager') or
+                self.env.user.has_group('restaurant_menu.group_restaurant_pricing_manager')
+            ):
+                raise AccessError("You do not have permission to modify branch/channel pricing.")
+        return super().write(vals)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if 'branch_price_line_ids' in vals:
+                if not self.env.su and not (
+                    self.env.user.has_group('restaurant_base.group_restaurant_operations_manager') or
+                    self.env.user.has_group('restaurant_menu.group_restaurant_pricing_manager')
+                ):
+                    raise AccessError("You do not have permission to modify branch/channel pricing.")
+        return super().create(vals_list)
     branch_pricing_has_below_cost = fields.Boolean(
         string='Has Below-Cost Prices',
         compute='_compute_branch_pricing_below_cost',

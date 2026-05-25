@@ -18,6 +18,7 @@ Phase 1 - UC-01:
         "point_of_sale"
     ],
     "data": [
+        "security/restaurant_menu_security.xml",
         "security/ir.model.access.csv",
         "views/product_template_views.xml",
         "views/pos_category_views.xml",
