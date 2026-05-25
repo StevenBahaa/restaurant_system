@@ -136,6 +136,7 @@
 
                 <page string="Branch Availability" name="branch_availability" invisible="not is_menu_item">
                     <field name="allowed_branch_ids" invisible="1"/>
+                    <field name="branch_availability_selectable_branch_ids" invisible="1"/>
                     <div class="alert alert-info" role="alert">
                         <strong>Branch availability summary</strong>
                         <br/>
@@ -150,23 +151,24 @@
                     </div>
                     <group>
                         <group string="Availability Rule">
-                            <field name="branch_availability_mode" widget="radio" />
+                            <field name="can_edit_global_branch_availability" invisible="1"/>
+                            <field name="branch_availability_mode" widget="radio" readonly="not can_edit_global_branch_availability" />
                             <label for="branch_available_from" string="Availability Dates"/>
                             <div class="o_row">
-                                <field name="branch_available_from" class="oe_inline" placeholder="Start Date"/>
+                                <field name="branch_available_from" class="oe_inline" placeholder="Start Date" readonly="not can_edit_global_branch_availability" />
                                 <span>to</span>
-                                <field name="branch_available_until" class="oe_inline" placeholder="End Date"/>
+                                <field name="branch_available_until" class="oe_inline" placeholder="End Date" readonly="not can_edit_global_branch_availability" />
                             </div>
                         </group>
                         <group string="Availability Reason">
-                            <field name="branch_unavailable_reason" placeholder="Reason why this item is unavailable at certain branches..."/>
+                            <field name="branch_unavailable_reason" placeholder="Reason why this item is unavailable at certain branches..." readonly="not can_edit_global_branch_availability" />
                         </group>
                     </group>
                     <group string="Selected Branches" invisible="branch_availability_mode != 'selected_branches'">
-                        <field name="branch_available_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('id', 'in', allowed_branch_ids)]"/>
+                        <field name="branch_available_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('id', 'in', branch_availability_selectable_branch_ids)]"/>
                     </group>
                     <group string="Excluded Branches" invisible="branch_availability_mode != 'excluded_branches'">
-                        <field name="branch_excluded_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('id', 'in', allowed_branch_ids)]"/>
+                        <field name="branch_excluded_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('id', 'in', branch_availability_selectable_branch_ids)]"/>
                     </group>
                     <group string="Audit" name="availability_audit">
                         <group>
@@ -174,17 +176,11 @@
                             <field name="branch_availability_last_changed_on" />
                         </group>
                     </group>
-                    <group string="Change History" name="change_history">
+                    <group string="Change History (Audit Log)" name="change_history">
                         <field name="branch_availability_log_ids" readonly="1" nolabel="1">
                             <list create="0" edit="0" delete="0">
                                 <field name="changed_on" />
                                 <field name="changed_by_id" />
-                                <field name="old_mode" />
-                                <field name="new_mode" />
-                                <field name="old_available_branch_names" />
-                                <field name="new_available_branch_names" />
-                                <field name="old_excluded_branch_names" />
-                                <field name="new_excluded_branch_names" />
                                 <field name="change_summary" />
                             </list>
                         </field>
@@ -208,7 +204,7 @@
                             <field name="currency_id" column_invisible="True" />
                             <field name="allowed_branch_ids" column_invisible="True" />
                             <field name="is_below_cost" column_invisible="True" />
-                            <field name="branch_id" options="{'no_create': True}" domain="[('id', 'in', allowed_branch_ids)]" />
+                            <field name="branch_id" options="{'no_create': True}" domain="[('company_id', 'in', (parent.company_id, False))]" />
                             <field name="channel" />
                             <field name="price" />
                             <field name="cost_reference" readonly="1" force_save="1" />
