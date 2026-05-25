@@ -92,18 +92,20 @@ class ProductTemplate(models.Model):
 
     def _search_branch_pricing_has_active_rules(self, operator, value):
         if operator == '=' and value:
-            return [('branch_price_line_ids', '!=', False)]
+            return [('branch_price_line_ids.active', '=', True)]
         elif operator == '=' and not value:
-            return [('branch_price_line_ids', '=', False)]
+            return [('branch_price_line_ids.active', '!=', True)]
         return []
 
     def _search_branch_pricing_has_future_rules(self, operator, value):
         today = fields.Date.context_today(self)
         if operator == '=' and value:
-            return [('branch_price_line_ids.date_from', '>', today)]
-        elif operator == '=' and not value:
-            return ['|', ('branch_price_line_ids', '=', False), ('branch_price_line_ids.date_from', '<=', today)]
-        return []
+            lines = self.env['restaurant.branch.price.line'].sudo().search([
+                ('active', '=', True),
+                ('date_from', '>', today),
+            ])
+            return [('id', 'in', lines.mapped('product_tmpl_id').ids)]
+        return [('id', '=', False)]
 
     @api.depends('branch_price_line_ids.is_below_cost', 'branch_price_line_ids.active')
     def _compute_branch_pricing_below_cost(self):
