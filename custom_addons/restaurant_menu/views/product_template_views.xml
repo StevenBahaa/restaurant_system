@@ -135,6 +135,7 @@
                 </page>
 
                 <page string="Branch Availability" name="branch_availability" invisible="not is_menu_item">
+                    <field name="allowed_branch_ids" invisible="1"/>
                     <div class="alert alert-info" role="alert">
                         <strong>Branch availability summary</strong>
                         <br/>
@@ -162,10 +163,10 @@
                         </group>
                     </group>
                     <group string="Selected Branches" invisible="branch_availability_mode != 'selected_branches'">
-                        <field name="branch_available_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('active', '=', True)]"/>
+                        <field name="branch_available_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('id', 'in', allowed_branch_ids)]"/>
                     </group>
                     <group string="Excluded Branches" invisible="branch_availability_mode != 'excluded_branches'">
-                        <field name="branch_excluded_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('active', '=', True)]"/>
+                        <field name="branch_excluded_ids" widget="many2many_tags" nolabel="1" options="{'no_create': True}" domain="[('id', 'in', allowed_branch_ids)]"/>
                     </group>
                     <group string="Audit" name="availability_audit">
                         <group>
@@ -201,7 +202,8 @@
                             <field name="sequence" widget="handle" />
                             <field name="company_id" column_invisible="True" />
                             <field name="currency_id" column_invisible="True" />
-                            <field name="branch_id" options="{'no_create': True}" />
+                            <field name="allowed_branch_ids" column_invisible="True" />
+                            <field name="branch_id" options="{'no_create': True}" domain="[('id', 'in', allowed_branch_ids)]" />
                             <field name="channel" />
                             <field name="price" />
                             <field name="date_from" />

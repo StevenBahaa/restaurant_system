@@ -70,6 +70,18 @@ class ProductTemplate(models.Model):
         string="Branch Availability Date Summary",
         compute="_compute_branch_availability_date_summary",
     )
+    allowed_branch_ids = fields.Many2many(
+        "restaurant.branch",
+        compute="_compute_allowed_branch_ids",
+    )
+
+    @api.depends("company_id")
+    def _compute_allowed_branch_ids(self):
+        for record in self:
+            domain = [("active", "=", True)]
+            if record.company_id:
+                domain.append(("company_id", "in", [False, record.company_id.id]))
+            record.allowed_branch_ids = self.env["restaurant.branch"].search(domain)
 
     @api.onchange('branch_availability_mode')
     def _onchange_branch_availability_mode(self):

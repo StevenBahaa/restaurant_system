@@ -9,3 +9,74 @@ class ProductTemplate(models.Model):
         'product_tmpl_id',
         string='Branch Pricing Rules'
     )
+
+    def _get_matching_branch_price_rule(self, branch=None, channel=None, price_date=None):
+        self.ensure_one()
+
+        allow_branch_rules = False
+        if branch and branch.active:
+            allow_branch_rules = True
+            branch_company = getattr(branch, 'company_id', False)
+            if self.company_id and branch_company and self.company_id.id != branch_company.id:
+                allow_branch_rules = False
+
+        if not price_date:
+            price_date = fields.Date.context_today(self)
+
+        rules = self.branch_price_line_ids.filtered(lambda r: r.active)
+
+        valid_rules = rules.filtered(
+            lambda r: (not r.date_from or r.date_from <= price_date) and
+                      (not r.date_until or r.date_until >= price_date)
+        )
+
+        if not valid_rules:
+            return None, 'global'
+
+        branch_channel_rules = valid_rules.filtered(lambda r: r.branch_id.id == branch.id and r.channel == channel) if allow_branch_rules and channel else self.env['restaurant.branch.price.line']
+        channel_rules = valid_rules.filtered(lambda r: not r.branch_id and r.channel == channel) if channel else self.env['restaurant.branch.price.line']
+        branch_rules = valid_rules.filtered(lambda r: r.branch_id.id == branch.id and not r.channel) if allow_branch_rules else self.env['restaurant.branch.price.line']
+
+        def sort_key(rule):
+            date_val = -rule.date_from.toordinal() if rule.date_from else 0
+            rule_id = rule.id if isinstance(rule.id, int) else 0
+            return (date_val, rule.sequence, -rule_id)
+
+        if branch_channel_rules:
+            return branch_channel_rules.sorted(key=sort_key)[0], 'branch_channel'
+
+        if channel_rules:
+            return channel_rules.sorted(key=sort_key)[0], 'channel'
+
+        if branch_rules:
+            return branch_rules.sorted(key=sort_key)[0], 'branch'
+
+        return None, 'global'
+
+    def _get_branch_price_payload(self, branch=None, channel=None, price_date=None):
+        self.ensure_one()
+        rule, source = self._get_matching_branch_price_rule(branch, channel, price_date)
+
+        if rule:
+            price = rule.price
+            rule_id = rule.id
+            currency_id = rule.currency_id.id
+        else:
+            price = self.list_price
+            rule_id = False
+            currency_id = self.currency_id.id or self.company_id.currency_id.id or self.env.company.currency_id.id
+
+        return {
+            "product_tmpl_id": self.id,
+            "branch_id": branch.id if branch else False,
+            "channel": channel or False,
+            "price": price,
+            "source": source,
+            "rule_id": rule_id,
+            "currency_id": currency_id
+        }
+
+    def _get_price_for_branch(self, branch=None, channel=None, price_date=None):
+        self.ensure_one()
+        payload = self._get_branch_price_payload(branch, channel, price_date)
+        return payload.get('price', self.list_price)
