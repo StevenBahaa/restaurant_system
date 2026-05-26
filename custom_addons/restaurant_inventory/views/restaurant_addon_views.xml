@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="restaurant_addon_group_view_form_inherit_inventory" model="ir.ui.view">
+        <field name="name">restaurant.addon.group.view.form.inherit.inventory</field>
+        <field name="model">restaurant.addon.group</field>
+        <field name="inherit_id" ref="restaurant_menu.restaurant_addon_group_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='ingredient_line_ids']/list/field[@name='quantity']" position="before">
+                <field name="is_critical" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
