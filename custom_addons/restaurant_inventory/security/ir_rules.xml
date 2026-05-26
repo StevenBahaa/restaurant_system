@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="restaurant_branch_stock_override_comp_rule" model="ir.rule">
+            <field name="name">Restaurant Branch Stock Override multi-company</field>
+            <field name="model_id" ref="model_restaurant_branch_stock_override"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+    </data>
+</odoo>

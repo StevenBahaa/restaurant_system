@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_restaurant_branch_stock_override_user,restaurant.branch.stock.override.user,model_restaurant_branch_stock_override,base.group_user,1,0,0,0
+access_restaurant_branch_stock_override_ops_mgr,restaurant.branch.stock.override.ops.mgr,model_restaurant_branch_stock_override,restaurant_base.group_restaurant_operations_manager,1,1,1,1

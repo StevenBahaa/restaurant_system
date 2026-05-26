@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="restaurant_branch_stock_override_view_list" model="ir.ui.view">
+        <field name="name">restaurant.branch.stock.override.view.list</field>
+        <field name="model">restaurant.branch.stock.override</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="branch_id"/>
+                <field name="product_tmpl_id"/>
+                <field name="is_available" widget="boolean_toggle"/>
+                <field name="reason"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="active" column_invisible="1"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="restaurant_branch_stock_override_view_form" model="ir.ui.view">
+        <field name="name">restaurant.branch.stock.override.view.form</field>
+        <field name="model">restaurant.branch.stock.override</field>
+        <field name="arch" type="xml">
+            <form string="Branch Stock Override">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <group>
+                        <group string="Override Target">
+                            <field name="branch_id" options="{'no_create': True}"/>
+                            <field name="product_tmpl_id" options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Override Decision">
+                            <field name="is_available" widget="boolean_toggle"/>
+                            <field name="reason"/>
+                        </group>
+                    </group>
+                    <group string="Validity">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="active" invisible="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="restaurant_branch_stock_override_view_search" model="ir.ui.view">
+        <field name="name">restaurant.branch.stock.override.view.search</field>
+        <field name="model">restaurant.branch.stock.override</field>
+        <field name="arch" type="xml">
+            <search string="Branch Stock Override">
+                <field name="branch_id"/>
+                <field name="product_tmpl_id"/>
+                <field name="reason"/>
+
+                <filter string="Available" name="filter_available" domain="[('is_available', '=', True)]"/>
+                <filter string="Unavailable" name="filter_unavailable" domain="[('is_available', '=', False)]"/>
+                <separator/>
+                <filter string="Archived" name="filter_archived" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="restaurant_branch_stock_override_action" model="ir.actions.act_window">
+        <field name="name">Branch Stock Overrides</field>
+        <field name="res_model">restaurant.branch.stock.override</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="restaurant_branch_stock_override_view_search"/>
+    </record>
+
+    <!-- Create Operations Menu under Restaurant ERP -->
+    <menuitem id="restaurant_operations_menu"
+        name="Operations"
+        parent="restaurant_base.restaurant_root_menu"
+        sequence="50" />
+
+    <menuitem id="restaurant_branch_stock_override_menu"
+        name="Branch Stock Overrides"
+        parent="restaurant_operations_menu"
+        action="restaurant_branch_stock_override_action"
+        sequence="10" />
+</odoo>
