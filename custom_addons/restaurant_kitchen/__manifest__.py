@@ -14,6 +14,7 @@
         "security/restaurant_kitchen_security.xml",
         "security/ir.model.access.csv",
         "views/restaurant_kitchen_station_views.xml",
+        "views/product_template_views.xml",
     ],
     "installable": True,
     "application": False,

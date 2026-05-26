@@ -6,5 +6,11 @@
             <field name="model_id" ref="model_restaurant_kitchen_station"/>
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
+
+        <record id="restaurant_product_kitchen_station_line_comp_rule" model="ir.rule">
+            <field name="name">Product Kitchen Station Line multi-company rule</field>
+            <field name="model_id" ref="model_restaurant_product_kitchen_station_line"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
     </data>
 </odoo>
