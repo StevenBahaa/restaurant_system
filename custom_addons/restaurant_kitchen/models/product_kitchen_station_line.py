@@ -70,17 +70,20 @@ class RestaurantProductKitchenStationLine(models.Model):
                 ("station_id", "=", line.station_id.id),
                 ("active", "=", True),
             ]
-            if self.search_count(domain) > 0:
+            dupes = self.search(domain)
+            if dupes:
+                print(f"DUPE FOUND: self={line} id={line.id} dupes={dupes} dupe_ids={dupes.ids}")
                 raise ValidationError("This kitchen station is already assigned to this product for the selected company.")
             
             duplicates_in_batch = self.filtered(
-                lambda l: l is not line
+                lambda l: l.id != line.id
                 and l.active
                 and l.product_tmpl_id == line.product_tmpl_id
                 and l.company_id == line.company_id
                 and l.station_id == line.station_id
             )
             if duplicates_in_batch:
+                print(f"BATCH DUPE: self={line} batch={duplicates_in_batch}")
                 raise ValidationError("This kitchen station is already assigned to this product for the selected company.")
 
     @api.constrains("station_id", "active")
@@ -103,3 +106,30 @@ class RestaurantProductKitchenStationLine(models.Model):
                 continue
             if line.product_tmpl_id.restaurant_product_type not in allowed_types:
                 raise ValidationError("This product type cannot be assigned to kitchen stations.")
+
+    def _revalidate_products_kitchen_governance(self, products):
+        """Helper to revalidate parent products after their assignment lines change."""
+        if products:
+            products._check_prepared_meal_station_governance()
+
+    def write(self, vals):
+        """Revalidate parent product governance if validity-affecting fields are modified."""
+        products = self.mapped("product_tmpl_id")
+        # Also capture new product if it is being moved to another product
+        if "product_tmpl_id" in vals and vals["product_tmpl_id"]:
+            products |= self.env["product.template"].browse(vals["product_tmpl_id"])
+            
+        result = super().write(vals)
+        
+        _validity_fields = {"active", "station_id", "company_id", "expected_prep_time", "product_tmpl_id"}
+        if _validity_fields & vals.keys():
+            self._revalidate_products_kitchen_governance(products)
+            
+        return result
+
+    def unlink(self):
+        """Revalidate parent product governance after unlinking."""
+        products = self.mapped("product_tmpl_id")
+        result = super().unlink()
+        self._revalidate_products_kitchen_governance(products)
+        return result
