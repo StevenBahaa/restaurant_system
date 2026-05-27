@@ -118,6 +118,32 @@ class ProductTemplate(models.Model):
         # If has active schedule lines and none match -> blocks
         return False, []
 
+    def _get_active_schedule_override(self, branch, at_datetime=None):
+        """Returns the active schedule override for this product+branch at the given datetime.
+        Priority: most recent date_from, then highest id.
+        Returns a recordset (empty if none found).
+        """
+        if not branch:
+            return self.env['restaurant.schedule.override']
+
+        if not at_datetime:
+            at_datetime = fields.Datetime.now()
+
+        eval_company = branch.company_id or self.env.company
+        domain = [
+            ('product_tmpl_id', '=', self.id),
+            ('branch_id', '=', branch.id),
+            ('company_id', '=', eval_company.id),
+            ('active', '=', True),
+            ('date_from', '<=', at_datetime),
+            '|',
+            ('date_to', '=', False),
+            ('date_to', '>=', at_datetime),
+        ]
+        return self.env['restaurant.schedule.override'].search(
+            domain, order='date_from desc, id desc', limit=1
+        )
+
     def _get_schedule_availability(self, branch=None, at_datetime=None):
         """Returns bool indicating if product is schedule-available."""
         payload = self._get_schedule_availability_payload(branch=branch, at_datetime=at_datetime)
@@ -126,6 +152,9 @@ class ProductTemplate(models.Model):
     def _get_schedule_availability_payload(self, branch=None, at_datetime=None):
         """Returns dict containing details of schedule availability evaluation."""
         self.ensure_one()
+
+        if not at_datetime:
+            at_datetime = fields.Datetime.now()
 
         local_dt = self._localize_datetime(at_datetime, branch=branch)
         eval_company = (branch.company_id or self.env.company) if branch else self.env.company
@@ -136,12 +165,38 @@ class ProductTemplate(models.Model):
             'is_available': False,
             'reason': '',
             'reason_code': '',
+            'branch_id': branch.id if branch else False,
+            'company_id': eval_company.id,
             'matched_schedule_ids': [],
             'matched_category_schedule_ids': [],
+            'blocking_schedule_ids': [],
             'manual_override': False,
             'override_id': False,
             'override_type': False,
+            'warnings': [],
         }
+
+        # Priority 1: Manual Schedule Override (branch-specific only)
+        if branch:
+            override = self._get_active_schedule_override(branch, at_datetime=at_datetime)
+            if override:
+                if override.override_type == 'force_available':
+                    payload['is_available'] = True
+                    payload['reason'] = override.reason
+                    payload['reason_code'] = 'manual_schedule_override_available'
+                else:
+                    payload['is_available'] = False
+                    payload['reason'] = override.reason
+                    payload['reason_code'] = 'manual_schedule_override_unavailable'
+                payload['manual_override'] = True
+                payload['override_id'] = override.id
+                payload['override_type'] = override.override_type
+                return payload
+        else:
+            payload['warnings'].append(
+                "No branch context provided. Schedule override requires branch context. "
+                "Continuing with global/company schedule logic."
+            )
 
         # Step 1: Category Gate Logic
         # A product can belong to multiple categories via pos_categ_ids

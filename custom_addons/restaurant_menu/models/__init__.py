@@ -14,3 +14,4 @@ from . import restaurant_product_schedule_line
 from . import restaurant_category_schedule_line
 from . import restaurant_branch
 from . import product_template_schedule
+from . import restaurant_schedule_override
