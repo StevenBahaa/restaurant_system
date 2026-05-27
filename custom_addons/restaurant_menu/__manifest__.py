@@ -29,6 +29,7 @@ Phase 1 - UC-08 to UC-12:
         "security/ir.model.access.csv",
         "data/restaurant_schedule_day_data.xml",
         "views/restaurant_schedule_rule_views.xml",
+        "views/restaurant_schedule_override_views.xml",
         "views/restaurant_branch_views.xml",
         "views/product_template_views.xml",
         "views/pos_category_views.xml",

@@ -28,5 +28,12 @@
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
             <field name="global" eval="True"/>
         </record>
+
+        <record id="restaurant_schedule_override_comp_rule" model="ir.rule">
+            <field name="name">Restaurant Schedule Override Multi-Company</field>
+            <field name="model_id" ref="model_restaurant_schedule_override"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
     </data>
 </odoo>

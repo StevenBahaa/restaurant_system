@@ -183,3 +183,166 @@ class ProductTemplate(models.Model):
             payload["reason_code"] = "critical_ingredient_out_of_stock"
             
         return payload
+
+    def _get_unified_availability_payload(
+        self,
+        branch,
+        at_datetime=None,
+        quantity=1,
+        evaluate_all=False,
+    ):
+        self.ensure_one()
+
+        # Initialize payload
+        payload = {
+            "product_tmpl_id": self.id,
+            "product_name": self.display_name,
+            "branch_id": branch.id if branch else False,
+            "branch_name": branch.name if branch else "",
+            "company_id": branch.company_id.id if branch else self.env.company.id,
+            "is_available": True,
+            "reason": "",
+            "reason_code": "available",
+            "layers": {
+                "branch": {
+                    "is_available": True,
+                    "reason": "",
+                    "reason_code": "",
+                    "payload": {}
+                },
+                "schedule": {
+                    "is_available": True,
+                    "reason": "",
+                    "reason_code": "",
+                    "manual_override": False,
+                    "payload": {}
+                },
+                "stock": {
+                    "is_available": True,
+                    "reason": "",
+                    "reason_code": "",
+                    "manual_override": False,
+                    "blocking_ingredients": [],
+                    "payload": {}
+                }
+            },
+            "blocking_reasons": [],
+            "warnings": []
+        }
+
+        # 2. Branch is required
+        if not branch:
+            payload.update({
+                "is_available": False,
+                "reason": "Branch is required to evaluate menu availability.",
+                "reason_code": "branch_not_provided"
+            })
+            return payload
+
+        # 3. Product must be active
+        if not self.active:
+            payload.update({
+                "is_available": False,
+                "reason": "Product is archived.",
+                "reason_code": "archived"
+            })
+            return payload
+
+        # 4. Product must be a menu item
+        if not self.is_menu_item:
+            payload.update({
+                "is_available": False,
+                "reason": "Product is not a menu item.",
+                "reason_code": "not_menu_item"
+            })
+            return payload
+
+        # 5. Multi-company check
+        if self.company_id and self.company_id != branch.company_id:
+            payload.update({
+                "is_available": False,
+                "reason": "Product company does not match branch company.",
+                "reason_code": "company_mismatch"
+            })
+            return payload
+
+        # 8. Branch layer evaluation
+        check_date = at_datetime.date() if at_datetime else None
+        branch_payload = self._get_branch_availability_payload(branch, check_date=check_date)
+        branch_ok = branch_payload.get("available", False)
+        
+        payload["layers"]["branch"] = {
+            "is_available": branch_ok,
+            "reason": branch_payload.get("reason", ""),
+            "reason_code": "available" if branch_ok else "branch_unavailable",
+            "payload": branch_payload,
+        }
+        
+        if not branch_ok:
+            reason_text = branch_payload.get("reason") or "Branch availability check failed."
+            payload["blocking_reasons"].append(reason_text)
+            if payload["is_available"]:
+                payload["is_available"] = False
+                payload["reason"] = reason_text
+                payload["reason_code"] = "branch_unavailable"
+            if not evaluate_all:
+                return payload
+
+        # 9. Schedule layer evaluation
+        sched_payload = self._get_schedule_availability_payload(branch=branch, at_datetime=at_datetime)
+        sched_ok = sched_payload.get("is_available", False)
+        
+        payload["layers"]["schedule"] = {
+            "is_available": sched_ok,
+            "reason": sched_payload.get("reason", ""),
+            "reason_code": sched_payload.get("reason_code", ""),
+            "manual_override": sched_payload.get("manual_override", False),
+            "payload": sched_payload,
+        }
+        
+        if not sched_ok:
+            reason_text = sched_payload.get("reason") or "Schedule availability check failed."
+            payload["blocking_reasons"].append(reason_text)
+            if payload["is_available"]:
+                payload["is_available"] = False
+                payload["reason"] = reason_text
+                payload["reason_code"] = "schedule_unavailable"
+            if not evaluate_all:
+                return payload
+
+        # 10. Stock layer evaluation
+        stock_payload = self._get_stock_availability_for_branch(branch, quantity=quantity)
+        stock_ok = stock_payload.get("is_available", False)
+        
+        stock_rc = stock_payload.get("reason_code") or "out_of_stock"
+        if stock_rc in ("missing_approved_recipe", "missing_recipe"):
+            stock_rc = "missing_recipe"
+        elif stock_rc == "available":
+            stock_rc = "available"
+        elif not stock_ok:
+            stock_rc = "out_of_stock"
+            
+        payload["layers"]["stock"] = {
+            "is_available": stock_ok,
+            "reason": stock_payload.get("reason", ""),
+            "reason_code": "available" if stock_ok else stock_rc,
+            "manual_override": stock_payload.get("manual_override", False),
+            "blocking_ingredients": stock_payload.get("blocking_ingredients", []),
+            "payload": stock_payload,
+        }
+        
+        if stock_payload.get("warnings"):
+            payload["warnings"].extend(stock_payload.get("warnings"))
+            
+        if not stock_ok:
+            reason_text = stock_payload.get("reason") or "Stock availability check failed."
+            payload["blocking_reasons"].append(reason_text)
+            if payload["is_available"]:
+                payload["is_available"] = False
+                payload["reason"] = reason_text
+                payload["reason_code"] = stock_rc
+            if not evaluate_all:
+                return payload
+
+        return payload
+

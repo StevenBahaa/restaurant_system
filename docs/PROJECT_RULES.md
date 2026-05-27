@@ -455,6 +455,7 @@ The following backend/domain areas have been completed:
 - UC-09 Branch-Specific Pricing
 - UC-10 Define Preparation Time & Kitchen Station
 - UC-11 Control Stock-Linked Availability
+- UC-12 Configure Menu Scheduling
 
 ## 17. Technical Learnings (UC-08 & UC-09)
 
@@ -465,10 +466,17 @@ The following backend/domain areas have been completed:
 - **Search Domains on One2many**: If adding a custom `search=` method for a boolean computed field that looks across a `One2many` relation, always explicitly filter for active child records (e.g., `[('line_ids.active', '=', True)]`).
 - **Complex Subqueries**: For search methods that require evaluating dates or complex states on child records (e.g., `date_from > today`), use a safe subquery (`self.env[...].search(...)` and return `[('id', 'in', ...)]`) rather than chaining dot-notation in a single domain, which can cause cross-record ORM bugs.
 
+## 17.1 Technical Learnings (UC-12)
+
+- **ORM Savepoints & Phantom Records**: `@api.constrains` flushes uncommitted records to the database mid-transaction. Direct SQL queries within the constraint will see the phantom record. Use direct SQL queries (excluding the current `id` or handling null values) to bypass ORM cache issues for overlap checks.
+- **Explicit Savepoints in Shell Tests**: When testing expected-to-fail creations (`ValidationError`) in Odoo shell scripts, wrap them in an explicit `env.cr.savepoint()` block to prevent phantom records from persisting and polluting subsequent queries, mirroring production HTTP behavior.
+- **Timezone-Aware vs Naive UTC**: `psycopg2` may return timezone-aware datetimes while Odoo `fields.Datetime` operates with naive UTC. When comparing datetimes retrieved via raw SQL against Odoo fields, explicitly normalize them (e.g. `astimezone(pytz.utc).replace(tzinfo=None)`).
+- **Midnight-Crossing Schedules**: When evaluating a time window that crosses midnight (e.g., 23:00 to 04:00), use `(local_dt.weekday() - 1) % 7` to check if the current time in the early morning belongs to the previous day's schedule rule.
+
 ## 18. Current Next Direction
 
 Next planned UC:
-UC-12
+UC-13
 
 Purpose:
 [To be defined by user in next prompt]

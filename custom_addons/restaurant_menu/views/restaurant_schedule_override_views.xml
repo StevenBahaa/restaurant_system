@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Action for Schedule Overrides -->
+    <record id="action_restaurant_schedule_override" model="ir.actions.act_window">
+        <field name="name">Schedule Overrides</field>
+        <field name="res_model">restaurant.schedule.override</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No manual schedule overrides yet!
+            </p>
+            <p>
+                Create a schedule override to force a menu item to be available
+                or unavailable at a specific branch, bypassing the normal
+                schedule rules for the current shift or a specified window.
+            </p>
+        </field>
+    </record>
+
+    <!-- List View -->
+    <record id="view_restaurant_schedule_override_list" model="ir.ui.view">
+        <field name="name">restaurant.schedule.override.list</field>
+        <field name="model">restaurant.schedule.override</field>
+        <field name="arch" type="xml">
+            <list string="Schedule Overrides"
+                  decoration-success="override_type == 'force_available'"
+                  decoration-danger="override_type == 'force_unavailable'">
+                <field name="product_tmpl_id"/>
+                <field name="branch_id"/>
+                <field name="override_type"/>
+                <field name="reason"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_restaurant_schedule_override_form" model="ir.ui.view">
+        <field name="name">restaurant.schedule.override.form</field>
+        <field name="model">restaurant.schedule.override</field>
+        <field name="arch" type="xml">
+            <form string="Schedule Override">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Override Target">
+                            <field name="product_tmpl_id" options="{'no_create': True}"/>
+                            <field name="branch_id" options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Override Decision">
+                            <field name="override_type"/>
+                            <field name="reason" placeholder="Reason for this manual override..."/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Validity">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Internal Notes" name="notes">
+                            <field name="note" placeholder="Optional internal notes (not shown in override reason)..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_restaurant_schedule_override_search" model="ir.ui.view">
+        <field name="name">restaurant.schedule.override.search</field>
+        <field name="model">restaurant.schedule.override</field>
+        <field name="arch" type="xml">
+            <search string="Search Schedule Overrides">
+                <field name="product_tmpl_id"/>
+                <field name="branch_id"/>
+                <field name="override_type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <separator/>
+                <filter string="Force Available" name="force_available"
+                        domain="[('override_type', '=', 'force_available')]"/>
+                <filter string="Force Unavailable" name="force_unavailable"
+                        domain="[('override_type', '=', 'force_unavailable')]"/>
+                <separator/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter string="Currently Valid" name="currently_valid"
+                        domain="[
+                            ('active', '=', True),
+                            ('date_from', '&lt;=', context_today().strftime('%Y-%m-%d %H:%M:%S')),
+                            '|',
+                            ('date_to', '=', False),
+                            ('date_to', '&gt;=', context_today().strftime('%Y-%m-%d %H:%M:%S'))
+                        ]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Branch" name="group_by_branch"
+                            context="{'group_by': 'branch_id'}"/>
+                    <filter string="Product" name="group_by_product"
+                            context="{'group_by': 'product_tmpl_id'}"/>
+                    <filter string="Override Type" name="group_by_override_type"
+                            context="{'group_by': 'override_type'}"/>
+                    <filter string="Company" name="group_by_company"
+                            context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Menu Item under Configuration -->
+    <menuitem id="menu_restaurant_schedule_override"
+        name="Schedule Overrides"
+        parent="restaurant_base.restaurant_menu_configuration"
+        action="action_restaurant_schedule_override"
+        groups="restaurant_base.group_restaurant_operations_manager"
+        sequence="60"/>
+</odoo>
