@@ -7,5 +7,12 @@
             <field name="comment">Can manage branch-specific pricing rules.</field>
             <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
         </record>
+
+        <record id="restaurant_schedule_rule_comp_rule" model="ir.rule">
+            <field name="name">Restaurant Schedule Rule Multi-Company</field>
+            <field name="model_id" ref="model_restaurant_schedule_rule"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
     </data>
 </odoo>
