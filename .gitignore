@@ -51,6 +51,9 @@ docs/
 scripts/
 test_uc07.py
 test_uc07_recipe.py
+test_uc10_step4_fix.py
+test_uc11_step4.py
+test_dbg.py
 last_prompt.txt
 .clinerules
 

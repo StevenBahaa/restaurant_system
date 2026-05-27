@@ -368,6 +368,80 @@ python odoo-bin -c conf\odoo.conf -d restaurant_system -u restaurant_menu
 - Agents must not create implementation plans or test files unless explicitly told to do so by the user.
 - Agents may create an implementation plan without being requested only if they do not understand the user's prompt or requirements and need to clarify the scope before writing code.
 
+### 15.1 Odoo MCP Server Runtime Inspection Rules
+
+1. The configured MCP server is:
+   odoo-restaurant
+
+2. The MCP server is connected to:
+   Odoo URL: http://localhost:8070
+   Database: restaurant_system
+
+3. The Odoo server must be started using the restaurant-specific config that includes:
+   dbfilter = ^restaurant_system$
+
+4. MCP is allowed only for safe runtime inspection unless I explicitly approve otherwise.
+
+5. MCP default mode is read-only.
+
+6. The agent must not:
+   - create records through MCP
+   - update records through MCP
+   - delete records through MCP
+   - call destructive model methods
+   - modify accounting records
+   - modify stock valuation records
+   - modify POS orders
+   - modify users
+   - modify access rights
+   - modify security rules
+   - expose or print the API key
+   - use YOLO mode
+   - bypass the MCP whitelist using /xmlrpc/2/common
+
+7. Before using MCP, the agent must verify the connection by listing MCP-enabled models.
+
+8. The expected MCP-enabled models should be limited to the configured whitelist, including models such as:
+   - product.template
+   - product.product
+   - stock.warehouse
+   - restaurant.branch
+   - restaurant.recipe
+   - restaurant.recipe.line
+   - restaurant.addon.group
+   - restaurant.addon.item
+   - restaurant.addon.item.ingredient
+   - restaurant.product.addon.group
+   - restaurant.combo.line
+   - restaurant.kitchen.station
+   - restaurant.product.kitchen.station.line
+   - restaurant.branch.price.line
+   - restaurant.branch.stock.override
+   - restaurant.branch.price.history
+   - restaurant.branch.availability.log
+   - restaurant.variant.recipe.line
+
+9. If MCP returns hundreds of Odoo models, this means the agent bypassed the MCP whitelist incorrectly. The agent must stop and report the problem.
+
+10. If MCP is unavailable, the agent must stop and report the issue. It must not silently fall back to standard Odoo XML-RPC.
+
+11. MCP should be used only to inspect live/runtime data, such as:
+   - checking configured products
+   - checking restaurant recipes
+   - checking branch records
+   - checking kitchen station assignments
+   - checking combo lines
+   - checking add-on groups and items
+   - validating runtime data before or after manual tests
+
+12. Code analysis and implementation must still follow:
+   - PROJECT_RULES.md
+   - the local Odoo Development Skill
+   - Odoo 18 backend-first architecture
+   - acceptance-criteria-driven workflow
+
+13. MCP does not replace code review, manual tests, or upgrade tests.
+
 ## 16. Completed Backend Foundation Summary
 
 The following backend/domain areas have been completed:
@@ -378,6 +452,8 @@ The following backend/domain areas have been completed:
 - UC-07 Combo Meals
 - UC-08 Branch-Specific Availability
 - UC-09 Branch-Specific Pricing
+- UC-10 Define Preparation Time & Kitchen Station
+- UC-11 Control Stock-Linked Availability
 
 ## 17. Technical Learnings (UC-08 & UC-09)
 
@@ -391,7 +467,7 @@ The following backend/domain areas have been completed:
 ## 18. Current Next Direction
 
 Next planned UC:
-UC-10
+UC-12
 
 Purpose:
 [To be defined by user in next prompt]
