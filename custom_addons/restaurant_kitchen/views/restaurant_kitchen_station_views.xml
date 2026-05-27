@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_restaurant_kitchen_station_list" model="ir.ui.view">
+        <field name="name">restaurant.kitchen.station.list</field>
+        <field name="model">restaurant.kitchen.station</field>
+        <field name="arch" type="xml">
+            <list string="Kitchen Stations">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="station_type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_restaurant_kitchen_station_form" model="ir.ui.view">
+        <field name="name">restaurant.kitchen.station.form</field>
+        <field name="model">restaurant.kitchen.station</field>
+        <field name="arch" type="xml">
+            <form string="Kitchen Station">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name" string="Station Name"/>
+                        <h1>
+                            <field name="name" placeholder="e.g., Grill Station"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="station_type"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="branch_ids" widget="many2many_tags" options="{'no_create': True}" domain="[('company_id', '=', company_id)]"/>
+                            <field name="active" invisible="1"/>
+                            <field name="sequence" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes" name="notes">
+                            <field name="note" placeholder="Internal notes..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_restaurant_kitchen_station_search" model="ir.ui.view">
+        <field name="name">restaurant.kitchen.station.search</field>
+        <field name="model">restaurant.kitchen.station</field>
+        <field name="arch" type="xml">
+            <search string="Kitchen Stations">
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('code', 'ilike', self)]"/>
+                <field name="station_type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="branch_ids"/>
+                <separator/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]" context="{'active_test': False}"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Station Type" name="group_by_type" context="{'group_by': 'station_type'}"/>
+                    <filter string="Company" name="group_by_company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_restaurant_kitchen_station" model="ir.actions.act_window">
+        <field name="name">Kitchen Stations</field>
+        <field name="res_model">restaurant.kitchen.station</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_restaurant_kitchen_station_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Kitchen Station
+            </p>
+            <p>
+                Kitchen Stations represent physical or logical prep areas (e.g., Grill, Fryer).
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_restaurant_kitchen_station"
+              name="Kitchen Stations"
+              parent="restaurant_base.restaurant_menu_configuration"
+              action="action_restaurant_kitchen_station"
+              sequence="20"/>
+
+</odoo>
