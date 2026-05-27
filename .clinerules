@@ -1,3 +1,0 @@
-# User Preferences & Git Workflow
-
-- **Git Commits & Pushes**: Always show the exact files modified and the proposed commit message/diff, and explicitly wait for user approval before executing any `git commit` or `git push` commands.
