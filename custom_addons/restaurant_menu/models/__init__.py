@@ -10,4 +10,6 @@ from . import restaurant_branch_price_history
 from . import product_template_price
 from . import restaurant_schedule_day
 from . import restaurant_schedule_rule
+from . import restaurant_product_schedule_line
+from . import restaurant_category_schedule_line
 from . import restaurant_branch

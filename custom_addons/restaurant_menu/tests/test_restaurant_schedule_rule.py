@@ -222,3 +222,112 @@ class TestRestaurantScheduleRule(TransactionCase):
         # Attempt to read company 2 rule by Company 1 manager should fail (AccessError)
         with self.assertRaises(AccessError):
             rule_c2.with_user(self.user_ops_mgr).read(['name'])
+
+    def test_07_product_schedule_assignment(self):
+        """Test product schedule line creation, defaults, cascade, restrict, and company constraints"""
+        product = self.env['product.template'].create({
+            'name': 'Test Burger',
+            'is_menu_item': True,
+            'company_id': self.company_main.id,
+        })
+        rule = self.env['restaurant.schedule.rule'].create({
+            'name': 'Lunch Rule',
+            'start_time': 12.0,
+            'end_time': 15.0,
+            'company_id': self.company_main.id,
+        })
+
+        # Test creation and company defaulting
+        line = self.env['restaurant.product.schedule.line'].create({
+            'product_tmpl_id': product.id,
+            'schedule_rule_id': rule.id,
+        })
+        self.assertTrue(line.id)
+        self.assertEqual(line.company_id, self.company_main)
+
+        # Test company consistency check
+        company2 = self.env['res.company'].create({'name': 'Second Company'})
+        rule_c2 = self.env['restaurant.schedule.rule'].create({
+            'name': 'Company 2 Rule',
+            'start_time': 12.0,
+            'end_time': 15.0,
+            'company_id': company2.id,
+        })
+        with self.assertRaises(ValidationError):
+            self.env['restaurant.product.schedule.line'].create({
+                'product_tmpl_id': product.id,
+                'schedule_rule_id': rule_c2.id,
+            })
+
+        # Test restrict deletion on rule
+        from odoo.tools import mute_logger
+        with self.assertRaises(Exception), mute_logger('odoo.sql_db'):
+            rule.unlink()
+
+        # Test cascade deletion on product
+        product.unlink()
+        self.assertFalse(line.exists())
+
+    def test_08_category_schedule_assignment(self):
+        """Test category schedule line creation, cascade, restrict, and company constraints"""
+        category = self.env['pos.category'].create({
+            'name': 'Burgers',
+        })
+        rule = self.env['restaurant.schedule.rule'].create({
+            'name': 'Dinner Rule',
+            'start_time': 18.0,
+            'end_time': 22.0,
+            'company_id': self.company_main.id,
+        })
+
+        # Test creation
+        line = self.env['restaurant.category.schedule.line'].create({
+            'category_id': category.id,
+            'schedule_rule_id': rule.id,
+            'company_id': self.company_main.id,
+        })
+        self.assertTrue(line.id)
+
+        # Test company consistency check
+        company2 = self.env['res.company'].create({'name': 'Second Company'})
+        with self.assertRaises(ValidationError):
+            self.env['restaurant.category.schedule.line'].create({
+                'category_id': category.id,
+                'schedule_rule_id': rule.id,
+                'company_id': company2.id,
+            })
+
+        # Test restrict deletion on rule
+        from odoo.tools import mute_logger
+        with self.assertRaises(Exception), mute_logger('odoo.sql_db'):
+            rule.unlink()
+
+        # Test cascade deletion on category
+        category.unlink()
+        self.assertFalse(line.exists())
+
+    def test_09_category_schedule_line_company_isolation(self):
+        """Test that category schedule lines respect multi-company record rules."""
+        company2 = self.env['res.company'].create({'name': 'Company 2'})
+        category = self.env['pos.category'].create({'name': 'Desserts'})
+        
+        rule_c2 = self.env['restaurant.schedule.rule'].create({
+            'name': 'C2 Rule',
+            'start_time': 12.0,
+            'end_time': 15.0,
+            'company_id': company2.id,
+        })
+        
+        line_c2 = self.env['restaurant.category.schedule.line'].with_context(
+            allowed_company_ids=[company2.id]
+        ).create({
+            'category_id': category.id,
+            'schedule_rule_id': rule_c2.id,
+            'company_id': company2.id,
+        })
+        
+        # User in company 1 should not see company 2's category schedule line
+        results = self.env['restaurant.category.schedule.line'].with_user(self.user_ops_mgr).search(
+            [('id', '=', line_c2.id)]
+        )
+        self.assertFalse(results)

@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields
 
 class PosCategory(models.Model):
     _inherit = 'pos.category'
@@ -23,4 +23,10 @@ class PosCategory(models.Model):
         string="Show in POS",
         default=True,
         help="Disable this option to hide this category from POS without archiving its products.",
+    )
+
+    category_schedule_line_ids = fields.One2many(
+        comodel_name="restaurant.category.schedule.line",
+        inverse_name="category_id",
+        string="Schedule Rules",
     )

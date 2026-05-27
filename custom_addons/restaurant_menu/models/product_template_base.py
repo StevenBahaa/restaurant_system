@@ -34,7 +34,13 @@ class ProductTemplate(models.Model):
         comodel_name="restaurant.product.addon.group",
         inverse_name="product_tmpl_id",
         string="Add-on Groups",
-    )   
+    )
+
+    product_schedule_line_ids = fields.One2many(
+        comodel_name="restaurant.product.schedule.line",
+        inverse_name="product_tmpl_id",
+        string="Schedule Rules",
+    )
 
     @api.onchange("restaurant_product_type")
     def _onchange_restaurant_product_type(self):

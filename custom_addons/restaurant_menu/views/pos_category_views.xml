@@ -12,6 +12,15 @@
                     <field name="available_from" />
                     <field name="available_until" />
                 </group>
+                <group string="Menu Scheduling Rules" invisible="not is_restaurant_category">
+                    <field name="category_schedule_line_ids" nolabel="1" colspan="2">
+                        <list editable="bottom">
+                            <field name="schedule_rule_id" options="{'no_create': True}" domain="[('company_id', 'in', (company_id, False))]"/>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1" force_save="1"/>
+                        </list>
+                    </field>
+                </group>
             </xpath>
         </field>
     </record>
