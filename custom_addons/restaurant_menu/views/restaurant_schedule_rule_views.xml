@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Action for Menu Schedule Rules -->
+    <record id="action_restaurant_schedule_rule" model="ir.actions.act_window">
+        <field name="name">Menu Schedule Rules</field>
+        <field name="res_model">restaurant.schedule.rule</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first menu schedule rule!
+            </p>
+            <p>
+                Schedule rules allow you to control menu availability by day of the week, time window, or date range.
+            </p>
+        </field>
+    </record>
+
+    <!-- List View -->
+    <record id="view_restaurant_schedule_rule_list" model="ir.ui.view">
+        <field name="name">restaurant.schedule.rule.list</field>
+        <field name="model">restaurant.schedule.rule</field>
+        <field name="arch" type="xml">
+            <list string="Schedule Rules">
+                <field name="name"/>
+                <field name="day_ids" widget="many2many_tags"/>
+                <field name="start_time" widget="float_time" optional="hide"/>
+                <field name="end_time" widget="float_time" optional="hide"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_restaurant_schedule_rule_form" model="ir.ui.view">
+        <field name="name">restaurant.schedule.rule.form</field>
+        <field name="model">restaurant.schedule.rule</field>
+        <field name="arch" type="xml">
+            <form string="Schedule Rule">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1>
+                            <field name="name" placeholder="e.g. Weekday Lunch"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Time Restriction">
+                            <label for="start_time" string="Time Window"/>
+                            <div class="o_row">
+                                <field name="start_time" widget="float_time" class="oe_inline"/>
+                                <span>to</span>
+                                <field name="end_time" widget="float_time" class="oe_inline"/>
+                            </div>
+                        </group>
+                        <group string="Date Restriction">
+                            <label for="date_from" string="Date Range"/>
+                            <div class="o_row">
+                                <field name="date_from" class="oe_inline"/>
+                                <span>to</span>
+                                <field name="date_to" class="oe_inline"/>
+                            </div>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Days of Week">
+                            <field name="day_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Metadata">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes" name="notes">
+                            <field name="note" placeholder="Write internal notes here..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_restaurant_schedule_rule_search" model="ir.ui.view">
+        <field name="name">restaurant.schedule.rule.search</field>
+        <field name="model">restaurant.schedule.rule</field>
+        <field name="arch" type="xml">
+            <search string="Search Schedule Rules">
+                <field name="name"/>
+                <separator/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Company" name="group_by_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Menu Item under Configuration -->
+    <menuitem id="menu_restaurant_schedule_rule"
+        name="Menu Schedule Rules"
+        parent="restaurant_base.restaurant_menu_configuration"
+        action="action_restaurant_schedule_rule"
+        sequence="50"/>
+</odoo>

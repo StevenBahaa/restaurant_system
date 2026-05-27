@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Branch Form View to add Timezone -->
+    <record id="restaurant_branch_view_form_inherit_tz" model="ir.ui.view">
+        <field name="name">restaurant.branch.view.form.inherit.tz</field>
+        <field name="model">restaurant.branch</field>
+        <field name="inherit_id" ref="restaurant_base.restaurant_branch_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='manager_user_ids']" position="after">
+                <field name="tz"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Inherit Branch List View to add Timezone -->
+    <record id="restaurant_branch_view_list_inherit_tz" model="ir.ui.view">
+        <field name="name">restaurant.branch.view.list.inherit.tz</field>
+        <field name="model">restaurant.branch</field>
+        <field name="inherit_id" ref="restaurant_base.restaurant_branch_view_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='warehouse_id']" position="after">
+                <field name="tz"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
