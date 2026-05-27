@@ -331,3 +331,111 @@ class TestRestaurantScheduleRule(TransactionCase):
             [('id', '=', line_c2.id)]
         )
         self.assertFalse(results)
+
+    def test_10_product_schedule_branch_and_unique(self):
+        """Test branch constraints and uniqueness for product schedule lines"""
+        product = self.env['product.template'].create({
+            'name': 'Test Pizza',
+            'is_menu_item': True,
+            'company_id': False, # Shared product
+        })
+        rule = self.env['restaurant.schedule.rule'].create({
+            'name': 'Weekend Rule',
+            'start_time': 10.0,
+            'end_time': 20.0,
+            'company_id': self.company_main.id,
+        })
+        branch1 = self.env['restaurant.branch'].create({
+            'name': 'Branch 1',
+            'code': 'B1',
+            'company_id': self.company_main.id,
+            'tz': 'Africa/Cairo',
+        })
+        company2 = self.env['res.company'].create({'name': 'Company 2'})
+        branch2 = self.env['restaurant.branch'].create({
+            'name': 'Branch 2',
+            'code': 'B2',
+            'company_id': company2.id,
+            'tz': 'Africa/Cairo',
+        })
+
+        # Test valid creation with branch
+        line1 = self.env['restaurant.product.schedule.line'].create({
+            'product_tmpl_id': product.id,
+            'schedule_rule_id': rule.id,
+            'company_id': self.company_main.id,
+            'branch_id': branch1.id,
+        })
+        self.assertTrue(line1.id)
+
+        # Test branch company mismatch validation
+        with self.assertRaises(ValidationError):
+            self.env['restaurant.product.schedule.line'].create({
+                'product_tmpl_id': product.id,
+                'schedule_rule_id': rule.id,
+                'company_id': self.company_main.id,
+                'branch_id': branch2.id,
+            })
+
+        # Test unique constraint for same scope
+        with self.assertRaises(ValidationError):
+            self.env['restaurant.product.schedule.line'].create({
+                'product_tmpl_id': product.id,
+                'schedule_rule_id': rule.id,
+                'company_id': self.company_main.id,
+                'branch_id': branch1.id,
+            })
+
+        # Test allowing same rule on different branch (or no branch)
+        line2 = self.env['restaurant.product.schedule.line'].create({
+            'product_tmpl_id': product.id,
+            'schedule_rule_id': rule.id,
+            'company_id': self.company_main.id,
+            'branch_id': False,
+        })
+        self.assertTrue(line2.id)
+
+    def test_11_category_schedule_branch_and_unique(self):
+        """Test branch constraints and uniqueness for category schedule lines"""
+        category = self.env['pos.category'].create({
+            'name': 'Pizzas',
+        })
+        rule = self.env['restaurant.schedule.rule'].create({
+            'name': 'Weekend Rule Cat',
+            'start_time': 10.0,
+            'end_time': 20.0,
+            'company_id': self.company_main.id,
+        })
+        branch1 = self.env['restaurant.branch'].create({
+            'name': 'Branch Cat 1',
+            'code': 'BC1',
+            'company_id': self.company_main.id,
+            'tz': 'Africa/Cairo',
+        })
+
+        # Test valid creation with branch
+        line1 = self.env['restaurant.category.schedule.line'].create({
+            'category_id': category.id,
+            'schedule_rule_id': rule.id,
+            'company_id': self.company_main.id,
+            'branch_id': branch1.id,
+        })
+        self.assertTrue(line1.id)
+
+        # Test unique constraint for same scope
+        with self.assertRaises(ValidationError):
+            self.env['restaurant.category.schedule.line'].create({
+                'category_id': category.id,
+                'schedule_rule_id': rule.id,
+                'company_id': self.company_main.id,
+                'branch_id': branch1.id,
+            })
+
+        # Test allowing same rule on different branch (or no branch)
+        line2 = self.env['restaurant.category.schedule.line'].create({
+            'category_id': category.id,
+            'schedule_rule_id': rule.id,
+            'company_id': self.company_main.id,
+            'branch_id': False,
+        })
+        self.assertTrue(line2.id)

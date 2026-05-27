@@ -367,6 +367,7 @@ python odoo-bin -c conf\odoo.conf -d restaurant_system -u restaurant_menu
 - Agents should keep implementation aligned with the approved design and acceptance criteria.
 - Agents must not create implementation plans or test files unless explicitly told to do so by the user.
 - Agents may create an implementation plan without being requested only if they do not understand the user's prompt or requirements and need to clarify the scope before writing code.
+- Agents must not commit or push changes to git until explicitly told to do so by the user.
 
 ### 15.1 Odoo MCP Server Runtime Inspection Rules
 
