@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="restaurant_menu_status_wizard_view_form" model="ir.ui.view">
+        <field name="name">restaurant.menu.status.wizard.form</field>
+        <field name="model">restaurant.menu.status.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Branch Menu Status Dashboard" create="false" delete="false">
+                <header>
+                    <button name="action_evaluate"
+                            type="object"
+                            string="Evaluate Availability"
+                            class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Branch Menu Status Dashboard</h1>
+                    </div>
+                    <group>
+                        <group string="Evaluation Parameters">
+                            <field name="allowed_branch_ids" invisible="1"/>
+                            <field name="branch_id" domain="[('id', 'in', allowed_branch_ids)]" required="1"/>
+                            <field name="at_datetime" required="1"/>
+                        </group>
+                        <group string="Options">
+                            <field name="quantity"/>
+                            <field name="evaluate_all"/>
+                        </group>
+                    </group>
+
+                    <group string="Summary Statistics">
+                        <group>
+                            <field name="total_count" readonly="1"/>
+                            <field name="available_count" readonly="1" class="text-success" style="font-weight: bold;"/>
+                            <field name="unavailable_count" readonly="1" class="text-danger" style="font-weight: bold;"/>
+                        </group>
+                        <group>
+                            <field name="blocked_by_branch_count" readonly="1"/>
+                            <field name="blocked_by_schedule_count" readonly="1"/>
+                            <field name="blocked_by_stock_count" readonly="1"/>
+                            <field name="schedule_manual_override_count" readonly="1"/>
+                            <field name="stock_manual_override_count" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Menu Status Lines" name="menu_status_lines">
+                            <field name="line_ids" readonly="1">
+                                <list decoration-danger="not is_available" decoration-success="is_available" create="false" edit="false" delete="false">
+                                    <field name="product_tmpl_id"/>
+                                    <field name="is_available" widget="boolean_toggle" readonly="1"/>
+                                    <field name="reason_code"/>
+                                    <field name="reason"/>
+                                    <field name="branch_available" widget="boolean_toggle" readonly="1"/>
+                                    <field name="schedule_available" widget="boolean_toggle" readonly="1"/>
+                                    <field name="stock_available" widget="boolean_toggle" readonly="1"/>
+                                    <field name="schedule_manual_override" widget="boolean_toggle" readonly="1"/>
+                                    <field name="stock_manual_override" widget="boolean_toggle" readonly="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Line Form View -->
+    <record id="restaurant_menu_status_wizard_line_view_form" model="ir.ui.view">
+        <field name="name">restaurant.menu.status.wizard.line.form</field>
+        <field name="model">restaurant.menu.status.wizard.line</field>
+        <field name="arch" type="xml">
+            <form string="Menu Status Line Details" create="false" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <group string="Product Status">
+                            <field name="product_tmpl_id" readonly="1"/>
+                            <field name="is_available" readonly="1"/>
+                            <field name="reason_code" readonly="1"/>
+                            <field name="reason" readonly="1"/>
+                        </group>
+                        <group string="Layer Checks &amp; Overrides">
+                            <field name="branch_available" readonly="1"/>
+                            <field name="schedule_available" readonly="1"/>
+                            <field name="stock_available" readonly="1"/>
+                            <field name="schedule_manual_override" readonly="1"/>
+                            <field name="stock_manual_override" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Blocking Reasons">
+                        <field name="blocking_reasons_text" readonly="1" nolabel="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Raw JSON Payload" name="payload_json_page">
+                            <field name="payload_json" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action definition -->
+    <record id="restaurant_menu_status_wizard_action" model="ir.actions.act_window">
+        <field name="name">Branch Menu Status</field>
+        <field name="res_model">restaurant.menu.status.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="context">{'default_evaluate_all': True, 'default_quantity': 1.0}</field>
+    </record>
+
+    <!-- Menu Item under Restaurant ERP -> Operations -->
+    <menuitem id="restaurant_menu_status_wizard_menu"
+              name="Branch Menu Status"
+              parent="restaurant_operations_menu"
+              action="restaurant_menu_status_wizard_action"
+              groups="restaurant_base.group_restaurant_operations_manager,restaurant_base.group_restaurant_branch_manager"
+              sequence="20"/>
+</odoo>
