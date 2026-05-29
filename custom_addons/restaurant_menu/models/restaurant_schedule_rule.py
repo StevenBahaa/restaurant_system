@@ -41,6 +41,48 @@ class RestaurantScheduleRule(models.Model):
     note = fields.Text(
         string="Notes",
     )
+    product_count = fields.Integer(
+        string='Products Count',
+        compute='_compute_product_count',
+    )
+
+    def _compute_product_count(self):
+        for record in self:
+            count = self.env['restaurant.product.schedule.line'].search_count([
+                ('schedule_rule_id', '=', record.id),
+                ('active', '=', True),
+            ])
+            record.product_count = count
+
+    def action_open_assign_wizard(self):
+        self.ensure_one()
+        return {
+            'name': 'Assign to Products',
+            'type': 'ir.actions.act_window',
+            'res_model': 'restaurant.schedule.rule.assign.products.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_schedule_rule_id': self.id,
+            }
+        }
+
+    def action_view_assigned_products(self):
+        self.ensure_one()
+        lines = self.env['restaurant.product.schedule.line'].search([
+            ('schedule_rule_id', '=', self.id),
+            ('active', '=', True),
+        ])
+        product_tmpl_ids = lines.mapped('product_tmpl_id').ids
+        return {
+            'name': 'Assigned Products',
+            'type': 'ir.actions.act_window',
+            'res_model': 'product.template',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', product_tmpl_ids)],
+            'target': 'current',
+        }
+
 
     @api.constrains('name', 'start_time', 'end_time', 'date_from', 'date_to', 'day_ids')
     def _check_schedule_rules(self):

@@ -36,6 +36,7 @@ Phase 1 - UC-08 to UC-12:
         "views/restaurant_addon_views.xml",
         "wizard/restaurant_branch_availability_bulk_wizard_views.xml",
         "wizard/restaurant_branch_price_bulk_wizard_views.xml",
+        "wizard/restaurant_schedule_rule_assign_products_wizard_views.xml",
     ],
     "installable": True,
     "application": False,

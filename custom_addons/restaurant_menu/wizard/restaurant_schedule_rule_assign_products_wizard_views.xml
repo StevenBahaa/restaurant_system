@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_restaurant_schedule_rule_assign_products_wizard_form" model="ir.ui.view">
+        <field name="name">restaurant.schedule.rule.assign.products.wizard.form</field>
+        <field name="model">restaurant.schedule.rule.assign.products.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Assign Schedule to Products">
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="apply_mode != 'replace_existing_for_products'">
+                        <strong>Warning:</strong> Replace mode will delete all other active and inactive schedule rules assigned to the selected products, and replace them with this schedule rule.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="schedule_rule_id" options="{'no_open': True}"/>
+                            <field name="apply_mode" widget="radio"/>
+                        </group>
+                    </group>
+                    <group string="Select Menu Products">
+                        <field name="allowed_product_tmpl_ids" invisible="1"/>
+                        <field name="product_tmpl_ids" widget="many2many_tags" nolabel="1" 
+                               placeholder="Select products..."
+                               options="{'no_create': True}"
+                               domain="[('id', 'in', allowed_product_tmpl_ids)]"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_apply" string="Confirm" type="object" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_restaurant_schedule_rule_assign_products_wizard" model="ir.actions.act_window">
+        <field name="name">Assign to Products</field>
+        <field name="res_model">restaurant.schedule.rule.assign.products.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>
