@@ -456,6 +456,7 @@ The following backend/domain areas have been completed:
 - UC-10 Define Preparation Time & Kitchen Station
 - UC-11 Control Stock-Linked Availability
 - UC-12 Configure Menu Scheduling
+- UC-D Demo Data Verification & Setup
 
 ## 17. Technical Learnings (UC-08 & UC-09)
 
@@ -473,10 +474,14 @@ The following backend/domain areas have been completed:
 - **Timezone-Aware vs Naive UTC**: `psycopg2` may return timezone-aware datetimes while Odoo `fields.Datetime` operates with naive UTC. When comparing datetimes retrieved via raw SQL against Odoo fields, explicitly normalize them (e.g. `astimezone(pytz.utc).replace(tzinfo=None)`).
 - **Midnight-Crossing Schedules**: When evaluating a time window that crosses midnight (e.g., 23:00 to 04:00), use `(local_dt.weekday() - 1) % 7` to check if the current time in the early morning belongs to the previous day's schedule rule.
 
+## 17.2 Technical Learnings (UC-D Demo Verification)
+
+- **Odoo 18 Storable Product Definition**: In Odoo 18 Community, the concept of a storable product (where "Track Inventory" is enabled in the UI) has changed. The `detailed_type` field has been removed entirely, and checking `type == 'product'` is no longer the correct way to identify storable goods. Instead, a storable product is configured with `type = 'consu'` (Consumable/Goods) AND `is_storable = True`. All backend verification and integration logic must exclusively use the `is_storable` boolean flag to determine if a product maintains stock quants.
+
 ## 18. Current Next Direction
 
 Next planned UC:
-UC-13
+UC-E
 
 Purpose:
 [To be defined by user in next prompt]

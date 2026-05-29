@@ -118,11 +118,17 @@ class RestaurantBranchPriceLine(models.Model):
     def create(self, vals_list):
         self._check_pricing_permissions()
         for vals in vals_list:
-            if vals.get('product_tmpl_id'):
-                product_tmpl = self.env['product.template'].browse(vals['product_tmpl_id'])
-                vals['company_id'] = product_tmpl.company_id.id or self.env.company.id
-            elif not vals.get('company_id'):
-                vals['company_id'] = self.env.company.id
+            branch_id = vals.get('branch_id')
+            product_tmpl_id = vals.get('product_tmpl_id')
+            branch = self.env['restaurant.branch'].browse(branch_id) if branch_id else self.env['restaurant.branch']
+            product_tmpl = self.env['product.template'].browse(product_tmpl_id) if product_tmpl_id else self.env['product.template']
+            
+            vals['company_id'] = (
+                branch.company_id.id or 
+                product_tmpl.company_id.id or 
+                vals.get('company_id') or 
+                self.env.company.id
+            )
         
         records = super().create(vals_list)
         
@@ -150,9 +156,51 @@ class RestaurantBranchPriceLine(models.Model):
 
     def write(self, vals):
         self._check_pricing_permissions()
-        if 'product_tmpl_id' in vals:
-            product_tmpl = self.env['product.template'].browse(vals['product_tmpl_id'])
-            vals['company_id'] = product_tmpl.company_id.id or self.env.company.id
+        
+        # If there are changes to branch_id or product_tmpl_id, we determine company_id dynamically.
+        # If self has multiple records, we check if they would get different company_ids.
+        # If they do, we write to each record individually to trigger correct history and company setup.
+        if 'branch_id' in vals or 'product_tmpl_id' in vals:
+            if len(self) > 1:
+                # Check if companies would differ
+                companies = {}
+                for record in self:
+                    branch_id = vals.get('branch_id', record.branch_id.id)
+                    product_tmpl_id = vals.get('product_tmpl_id', record.product_tmpl_id.id)
+                    branch = self.env['restaurant.branch'].browse(branch_id) if branch_id else self.env['restaurant.branch']
+                    product_tmpl = self.env['product.template'].browse(product_tmpl_id) if product_tmpl_id else self.env['product.template']
+                    
+                    company = (
+                        branch.company_id.id or
+                        product_tmpl.company_id.id or
+                        self.env.company.id
+                    )
+                    companies[record.id] = company
+                
+                # If they are all the same, we can do a single write
+                if len(set(companies.values())) == 1:
+                    vals['company_id'] = list(companies.values())[0]
+                else:
+                    # Write individually to trigger history and constraint rules properly
+                    res = True
+                    for record in self:
+                        record_vals = vals.copy()
+                        record_vals['company_id'] = companies[record.id]
+                        res = res and record.write(record_vals)
+                    return res
+            else:
+                # Single record write
+                record = self
+                branch_id = vals.get('branch_id', record.branch_id.id)
+                product_tmpl_id = vals.get('product_tmpl_id', record.product_tmpl_id.id)
+                branch = self.env['restaurant.branch'].browse(branch_id) if branch_id else self.env['restaurant.branch']
+                product_tmpl = self.env['product.template'].browse(product_tmpl_id) if product_tmpl_id else self.env['product.template']
+                
+                vals['company_id'] = (
+                    branch.company_id.id or
+                    product_tmpl.company_id.id or
+                    self.env.company.id
+                )
         elif 'company_id' in vals and not vals.get('company_id'):
             vals['company_id'] = self.env.company.id
 

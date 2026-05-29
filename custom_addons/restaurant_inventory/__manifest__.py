@@ -3,7 +3,7 @@
     "version": "18.0.1.0.0",
     "category": "Operations/Restaurant",
     "summary": "Stock-linked availability and inventory management for restaurant",
-    "author": "Your Name",
+    "author": "Steven Bahaa",
     "website": "https://github.com/StevenBahaa/restaurant_system",
     "depends": [
         "restaurant_base",
@@ -17,6 +17,7 @@
         "views/restaurant_recipe_views.xml",
         "views/restaurant_addon_views.xml",
         "views/restaurant_branch_stock_override_views.xml",
+        "views/menu_status_wizard_views.xml",
     ],
     "post_init_hook": "post_init_hook",
     "installable": True,
