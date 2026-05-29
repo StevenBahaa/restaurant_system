@@ -209,7 +209,7 @@
                             <field name="currency_id" column_invisible="True" />
                             <field name="allowed_branch_ids" column_invisible="True" />
                             <field name="is_below_cost" column_invisible="True" />
-                            <field name="branch_id" options="{'no_create': True}" domain="[('company_id', 'in', (parent.company_id, False))]" />
+                            <field name="branch_id" options="{'no_create': True}" domain="[('id', 'in', allowed_branch_ids)]" />
                             <field name="channel" />
                             <field name="price" />
                             <field name="cost_reference" readonly="1" force_save="1" />
