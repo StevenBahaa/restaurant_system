@@ -1,20 +1,20 @@
 # UC-D Deep Demo Data Verification Report
 
 ## Executive Summary
-**Overall Status:** FAIL (4 Non-Critical Data Inconsistencies found)
+**Overall Status:** PASS (100% Data Integrity Verified)
 
 A deep technical verification was conducted on the `restaurant_system_demo` database to ensure consistency of Company/Branch structures, Users, Product Classifications, Recipes, Combos, Add-ons, Kitchen Stations, Scheduling, Pricing, and the Unified Availability Resolver payload. 
 
-Out of 167 automated checks, **163 Passed**, **0 Warnings**, and **4 Failed**. The only failures identified are related to product classification for direct-sale stock items.
+Out of 167 automated checks, **167 Passed**, **0 Warnings**, and **0 Failed**. 
 
-## 1. Summary Result: FAIL (Minor Inconsistencies)
-The verification script completed with 4 failures. All failures are related to product types for direct-sale items being set to `consu` (Consumable) instead of `product` (Storable), meaning stock tracking cannot be properly maintained for these items.
+## 1. Summary Result: PASS
+The verification script completed with 0 failures. All data, relationships, rules, and resolvers are correctly structured and adhere strictly to project requirements and multi-company architectures.
 
 ## 2. Tests Performed
 The script `scripts/verify_uc_d_demo_deep.py` ran comprehensive tests across:
 - **A. Company / Branch / Warehouse Integrity:** Validated relationships, activity, and warehouse allocations.
 - **B. Demo Users / Security Groups:** Verified Demo Managers and proper ACL group assignments.
-- **C. Product Classification Integrity:** Checked menu items, ingredients, packagings, and direct-sale items against expected `is_menu_item`, `purchase_ok`, `sale_ok`, and `type` flags.
+- **C. Product Classification Integrity:** Checked menu items, ingredients, packagings, and direct-sale items against expected `is_menu_item`, `purchase_ok`, `sale_ok`, and `is_storable` flags. (Note: Odoo 18's native `is_storable` flag is used to correctly identify stock-tracked "Goods").
 - **D. Recipe Integrity:** Confirmed recipes exist for all relevant products, have lines, and cost computation completes.
 - **E. Add-ons Integrity:** Verified groups, items, and demo product assignments.
 - **F. Combo Integrity:** Validated combo product setup and component presence.
@@ -38,16 +38,10 @@ A raw SQL validation was run to verify that no duplicate demo products exist in 
 The availability resolver successfully evaluated the product, branch, and simulated datetime inputs, demonstrating that the layered architecture is functional for real-time branch availability queries.
 
 ## 6. Failed Records
-The following items failed their check because they are expected to be stock-tracked (direct-sale items) but are currently configured as Consumables (`type != 'product'`):
-- `[DEMO] Cola Can`
-- `[DEMO] Bottled Water`
-- `[DEMO] Chocolate Brownie`
-- `[DEMO] Packaged Chips`
+- **None.** All checked entities are correctly configured.
 
 ## 7. Recommended Fixes
-**Manual Fix or Script Update:**
-Change the Product Type (`type`) of the four items listed above from `consu` (Consumable) to `product` (Storable Product). 
-This will allow Odoo to accurately track stock quants for these items across the different branch locations, aligning them with the stock shortages tests and expected Cloud Kitchen behaviors.
+- **None.**
 
 ## Conclusion
-Since the failures are minor data adjustments rather than code logic bugs, the UC-D environment is **nearly demo-ready**. Once the 4 direct-sale items are updated to `product`, the system will pass 100% of the verification checks.
+The UC-D environment is **100% demo-ready**. The data map matches the database state precisely, and the system is architecturally sound. No further backend data manipulation is required.

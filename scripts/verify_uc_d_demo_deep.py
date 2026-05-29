@@ -69,7 +69,7 @@ def run_tests(env):
         if p_type == 'ingredient':
             check(not pt.is_menu_item, "C: Ingredient is_menu_item=False", "Is menu item", pt.name)
             check(pt.purchase_ok, "C: Ingredient purchase_ok=True", "Cannot purchase", pt.name)
-            if pt.type == 'product': # if stock tracked
+            if pt.is_storable: # if stock tracked
                 pass
         # 2. Packaging
         elif p_type == 'packaging':
@@ -82,7 +82,7 @@ def run_tests(env):
             check(p_type in ['prepared_meal', 'beverage', 'ready_item', 'combo'], "C: Menu item type", f"Invalid type {p_type}", pt.name)
         # 4. Direct sale
         if pt.name in ['[DEMO] Cola Can', '[DEMO] Bottled Water', '[DEMO] Chocolate Brownie', '[DEMO] Packaged Chips']:
-            check(pt.type == 'product', "C: Direct sale is storable", "Not storable", pt.name)
+            check(pt.is_storable, "C: Direct sale is storable", "Not storable", pt.name)
 
     # D. Recipe Integrity
     req_recipes = ["[DEMO] Classic Beef Burger", "[DEMO] Crispy Chicken Sandwich", "[DEMO] Double Smash Burger", "[DEMO] Grilled Chicken Meal", "[DEMO] Chicken Shawarma Wrap", "[DEMO] Koshary Bowl", "[DEMO] Kofta Rice Bowl", "[DEMO] Falafel Sandwich", "[DEMO] French Fries", "[DEMO] Fresh Mango Juice", "[DEMO] Lemon Mint Juice", "[DEMO] Turkish Coffee"]
