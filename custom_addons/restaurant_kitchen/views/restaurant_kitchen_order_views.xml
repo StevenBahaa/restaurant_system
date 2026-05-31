@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Search View -->
+    <record id="view_restaurant_kitchen_order_search" model="ir.ui.view">
+        <field name="name">restaurant.kitchen.order.search</field>
+        <field name="model">restaurant.kitchen.order</field>
+        <field name="arch" type="xml">
+            <search string="Kitchen Preparation Orders">
+                <field name="name"/>
+                <field name="branch_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="source_type"/>
+                <field name="state"/>
+                <field name="order_date"/>
+                
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Confirmed" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <filter string="In Preparation" name="in_preparation" domain="[('state', '=', 'in_preparation')]"/>
+                <filter string="Ready" name="ready" domain="[('state', '=', 'ready')]"/>
+                <filter string="Cancelled" name="cancelled" domain="[('state', '=', 'cancelled')]"/>
+                <separator/>
+                <filter string="Availability Checked" name="availability_checked" domain="[('availability_checked', '=', True)]"/>
+                <separator/>
+                <filter string="Today" name="today" domain="[('order_date', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))), ('order_date', '&lt;=', datetime.datetime.combine(context_today(), datetime.time(23,59,59)))]"/>
+                <separator/>
+                <filter string="Archived" name="archived" domain="[('active', '=', False)]" context="{'active_test': False}"/>
+                
+                <group expand="0" string="Group By">
+                    <filter string="Branch" name="group_branch" context="{'group_by': 'branch_id'}"/>
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Source Type" name="group_source" context="{'group_by': 'source_type'}"/>
+                    <filter string="Company" name="group_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+                    <filter string="Order Date" name="group_order_date" context="{'group_by': 'order_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- List View -->
+    <record id="view_restaurant_kitchen_order_list" model="ir.ui.view">
+        <field name="name">restaurant.kitchen.order.list</field>
+        <field name="model">restaurant.kitchen.order</field>
+        <field name="arch" type="xml">
+            <list string="Kitchen Preparation Orders">
+                <field name="name"/>
+                <field name="branch_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="order_date"/>
+                <field name="source_type"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-warning="state == 'confirmed'" decoration-primary="state == 'in_preparation'" decoration-success="state == 'ready'" decoration-muted="state == 'cancelled'"/>
+                <field name="availability_checked" widget="boolean_toggle" readonly="1"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_restaurant_kitchen_order_form" model="ir.ui.view">
+        <field name="name">restaurant.kitchen.order.form</field>
+        <field name="model">restaurant.kitchen.order</field>
+        <field name="arch" type="xml">
+            <form string="Kitchen Preparation Order">
+                <header>
+                    <button name="action_cancel" string="Cancel" type="object" invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,in_preparation,ready,cancelled"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="branch_id" readonly="state != 'draft'"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
+                            <field name="order_date" readonly="state != 'draft'"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="source_type" readonly="state != 'draft'"/>
+                            <field name="source_reference" readonly="state != 'draft'"/>
+                            <field name="partner_id" readonly="state != 'draft'"/>
+                            <field name="availability_checked" readonly="1"/>
+                            <field name="last_availability_check_on" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Order Lines" name="lines">
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_tmpl_id" 
+                                        domain="[('active', '=', True), ('is_menu_item', '=', True), ('restaurant_product_type', 'in', ['prepared_meal', 'beverage', 'ready_item']), '|', ('company_id', '=', False), ('company_id', '=', parent.company_id)]"/>
+                                    <field name="quantity"/>
+                                    <field name="availability_status" readonly="1"/>
+                                    <field name="reason_code" readonly="1" column_invisible="True"/>
+                                    <field name="routing_status" readonly="1"/>
+                                    <field name="expected_prep_time" readonly="1"/>
+                                    <field name="note"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="note" placeholder="Internal notes..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_restaurant_kitchen_order" model="ir.actions.act_window">
+        <field name="name">Kitchen Preparation Orders</field>
+        <field name="res_model">restaurant.kitchen.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'default_source_type': 'manual_demo'}</field>
+        <field name="search_view_id" ref="view_restaurant_kitchen_order_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new Kitchen Preparation Order
+            </p>
+            <p>
+                Kitchen Preparation Orders are operational documents for the kitchen.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menus -->
+    <menuitem id="menu_restaurant_kitchen_root"
+              name="Kitchen"
+              parent="restaurant_base.restaurant_root_menu"
+              sequence="30"/>
+
+    <menuitem id="menu_restaurant_kitchen_order"
+              name="Preparation Orders"
+              parent="menu_restaurant_kitchen_root"
+              action="action_restaurant_kitchen_order"
+              sequence="10"/>
+
+</odoo>

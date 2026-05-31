@@ -12,5 +12,17 @@
             <field name="model_id" ref="model_restaurant_product_kitchen_station_line"/>
             <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         </record>
+
+        <record id="restaurant_kitchen_order_comp_rule" model="ir.rule">
+            <field name="name">Kitchen Order multi-company rule</field>
+            <field name="model_id" ref="model_restaurant_kitchen_order"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="restaurant_kitchen_order_line_comp_rule" model="ir.rule">
+            <field name="name">Kitchen Order Line multi-company rule</field>
+            <field name="model_id" ref="model_restaurant_kitchen_order_line"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
     </data>
 </odoo>

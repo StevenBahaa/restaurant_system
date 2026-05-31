@@ -107,6 +107,7 @@ Examples of separate business concepts that must remain separate:
 - Do not use POS code unless explicitly approved.
 - Use Odoo 18 view syntax.
 - Use `<list>`, not `<tree>`.
+- Use `<chatter/>` outside the `<sheet>` tag and inside the `<form>` tag to add chatter in views, instead of the deprecated `<div class="oe_chatter">...</div>`.
 - Keep XML inheritance stable and avoid risky XPath expressions when possible.
 - When XPath is uncertain, inspect the original Odoo view before modifying.
 - Avoid duplicate inherited views that do the same job.
