@@ -48,8 +48,8 @@ class RestaurantKitchenOrderLine(models.Model):
                 raise ValidationError(_("Product must be active."))
             if not product.is_menu_item:
                 raise ValidationError(_("Product must be a menu item."))
-            if product.restaurant_product_type not in ['prepared_meal', 'beverage', 'ready_item']:
-                raise ValidationError(_("Product must be a prepared meal, beverage, or ready item."))
+            if product.restaurant_product_type not in ['prepared_meal', 'beverage', 'ready_item', 'combo']:
+                raise ValidationError(_("Product must be a prepared meal, beverage, ready item, or combo."))
             if product.company_id and line.company_id and product.company_id != line.company_id:
                 raise ValidationError(_("Company-specific products must match the order company."))
 
@@ -77,8 +77,12 @@ class RestaurantKitchenOrderLine(models.Model):
         return records
 
     def write(self, vals):
+        # Only routing fields may be updated on confirmed order lines.
+        # These fields are set by action_generate_tickets() after confirmation.
+        allowed_fields = {'routing_status', 'routing_note'}
+        is_only_routing = all(k in allowed_fields for k in vals.keys())
         for line in self:
-            if line.order_id.state != 'draft':
+            if line.order_id.state != 'draft' and not is_only_routing:
                 raise ValidationError(_("Order lines can only be modified when the order is in draft state."))
                 
         write_vals = dict(vals)

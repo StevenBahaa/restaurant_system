@@ -42,6 +42,20 @@ class RestaurantKitchenOrder(models.Model):
     unavailable_line_count = fields.Integer(string='Unavailable Lines', compute='_compute_availability_counters')
     not_checked_line_count = fields.Integer(string='Not Checked Lines', compute='_compute_availability_counters')
 
+    ticket_ids = fields.One2many('restaurant.kitchen.ticket', 'order_id', string='Tickets')
+    ticket_count = fields.Integer(string='Ticket Count', compute='_compute_ticket_count')
+    tickets_generated = fields.Boolean(string='Tickets Generated', default=False)
+    tickets_generated_on = fields.Datetime(string='Tickets Generated On', readonly=True)
+
+    @api.depends('ticket_ids')
+    def _compute_ticket_count(self):
+        ticket_data = self.env['restaurant.kitchen.ticket']._read_group(
+            [('order_id', 'in', self.ids)], ['order_id'], ['__count']
+        )
+        counts = {order.id: count for order, count in ticket_data}
+        for order in self:
+            order.ticket_count = counts.get(order.id, 0)
+
     @api.depends('line_ids.availability_status')
     def _compute_availability_counters(self):
         for order in self:
@@ -182,3 +196,86 @@ class RestaurantKitchenOrder(models.Model):
             'availability_checked': True,
             'last_availability_check_on': fields.Datetime.now(),
         })
+
+    def action_generate_tickets(self):
+        self._check_branch_operation_access()
+        for order in self:
+            if order.state != 'confirmed':
+                raise UserError(_("Only confirmed orders can generate tickets."))
+            if not order.availability_checked:
+                raise UserError(_("Availability must be checked before generating tickets."))
+            if any(line.availability_status != 'available' for line in order.line_ids):
+                raise UserError(_("Cannot generate tickets because some lines are not available."))
+            if order.tickets_generated or order.ticket_ids:
+                raise UserError(_("Tickets have already been generated for this order."))
+
+            tickets_by_station = {}
+            tickets_created = 0
+
+            for line in order.line_ids:
+                station_lines = line.product_tmpl_id._get_active_kitchen_station_lines(
+                    company=order.company_id,
+                    branch=order.branch_id,
+                )
+
+                if station_lines:
+                    for s_line in station_lines:
+                        station = s_line.station_id
+                        if station.id not in tickets_by_station:
+                            ticket = self.env['restaurant.kitchen.ticket'].create({
+                                'order_id': order.id,
+                                'station_id': station.id,
+                            })
+                            tickets_by_station[station.id] = ticket
+                            tickets_created += 1
+                        
+                        ticket = tickets_by_station[station.id]
+                        
+                        self.env['restaurant.kitchen.ticket.line'].create({
+                            'ticket_id': ticket.id,
+                            'order_line_id': line.id,
+                            'quantity': line.quantity,
+                            'expected_prep_time': s_line.expected_prep_time or line.expected_prep_time,
+                            'sequence': s_line.sequence,
+                        })
+                    
+                    line.write({
+                        'routing_status': 'routed',
+                        'routing_note': False,
+                    })
+                else:
+                    note = _("No kitchen station assignment is required for this item.")
+                    if line.product_tmpl_id.restaurant_product_type == 'combo':
+                        note = _("Combo component routing is deferred to a future UC.")
+                    
+                    line.write({
+                        'routing_status': 'no_station_required',
+                        'routing_note': note,
+                    })
+            
+            for ticket in tickets_by_station.values():
+                prep_times = ticket.line_ids.mapped('expected_prep_time')
+                ticket.expected_prep_time = max(prep_times) if prep_times else 0.0
+
+            if tickets_created > 0:
+                order.write({
+                    'tickets_generated': True,
+                    'tickets_generated_on': fields.Datetime.now(),
+                })
+            else:
+                order.write({
+                    'state': 'ready',
+                    'tickets_generated': True,
+                    'tickets_generated_on': fields.Datetime.now(),
+                })
+
+    def action_view_tickets(self):
+        self.ensure_one()
+        return {
+            'name': _('Kitchen Tickets'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'restaurant.kitchen.ticket',
+            'view_mode': 'list,form',
+            'domain': [('order_id', '=', self.id)],
+            'context': {'default_order_id': self.id},
+        }

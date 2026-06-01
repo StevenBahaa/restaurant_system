@@ -17,6 +17,7 @@
         "security/restaurant_kitchen_security.xml",
         "security/ir.model.access.csv",
         "views/restaurant_kitchen_order_views.xml",
+        "views/restaurant_kitchen_ticket_views.xml",
         "views/restaurant_kitchen_station_views.xml",
         "views/product_template_views.xml",
     ],
