@@ -11,8 +11,6 @@ class RestaurantKitchenOrder(models.Model):
     name = fields.Char(string='Name', required=True, default='/', readonly=True, copy=False)
     source_type = fields.Selection([
         ('manual_demo', 'Manual Demo'),
-        ('sale_order', 'Sale Order'),
-        ('pos_order', 'POS Order')
     ], string='Source Type', required=True, default='manual_demo')
     source_model = fields.Char(string='Source Model', readonly=True, copy=False)
     source_res_id = fields.Integer(string='Source Record ID', readonly=True, copy=False)
@@ -70,11 +68,7 @@ class RestaurantKitchenOrder(models.Model):
                 if order.branch_id.company_id != order.company_id:
                     raise ValidationError(_("Order branch company must match order company."))
 
-    @api.constrains('source_type')
-    def _check_source_type(self):
-        for order in self:
-            if order.source_type != 'manual_demo':
-                raise ValidationError(_("Only Manual Demo source is currently available from this screen. Sales Order and POS Order sources are reserved for future integrations."))
+
 
     @api.model_create_multi
     def create(self, vals_list):
