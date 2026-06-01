@@ -113,7 +113,33 @@ class RestaurantKitchenOrder(models.Model):
         
     def action_confirm(self):
         self._check_branch_operation_access()
-        raise UserError(_("Confirm is not implemented yet."))
+        for order in self:
+            if order.state != 'draft':
+                raise UserError(_("Only draft kitchen preparation orders can be confirmed."))
+            if not order.branch_id:
+                raise UserError(_("Branch is required to confirm the order."))
+            if not order.line_ids:
+                raise UserError(_("Cannot confirm an order without order lines."))
+            if not order.availability_checked:
+                raise UserError(_("Please check availability before confirming this kitchen preparation order."))
+                
+            unavailable_lines = []
+            for line in order.line_ids:
+                if line.availability_status == 'not_checked':
+                    raise UserError(_("Please check availability before confirming this kitchen preparation order."))
+                elif line.availability_status == 'unavailable':
+                    unavailable_lines.append(line)
+                    
+            if unavailable_lines:
+                error_parts = []
+                for line in unavailable_lines:
+                    reason_code = line.reason_code or 'unknown'
+                    reason = line.reason or 'No reason provided'
+                    error_parts.append(f"- {line.product_tmpl_id.display_name}: {reason_code} — {reason}")
+                error_msg = _("Cannot confirm this order because some lines are unavailable:\n%s") % "\n".join(error_parts)
+                raise UserError(error_msg)
+                
+            order.write({'state': 'confirmed'})
 
     def action_check_availability(self):
         self.ensure_one()

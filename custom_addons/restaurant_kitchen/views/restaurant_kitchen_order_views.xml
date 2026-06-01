@@ -63,6 +63,7 @@
             <form string="Kitchen Preparation Order">
                 <header>
                     <button name="action_check_availability" string="Check Availability" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_confirm" string="Confirm" type="object" class="oe_highlight" invisible="state != 'draft' or availability_checked == False"/>
                     <button name="action_cancel" string="Cancel" type="object" invisible="state != 'draft'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,in_preparation,ready,cancelled"/>
                 </header>
