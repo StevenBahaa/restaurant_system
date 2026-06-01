@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="pos_order_view_form_inherit_restaurant_pos_kitchen" model="ir.ui.view">
+        <field name="name">pos.order.form.inherit.restaurant.pos.kitchen</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='order_fields']" position="after">
+                <group name="restaurant_kitchen_group" string="Restaurant Kitchen Context">
+                    <field name="restaurant_branch_id"/>
+                    <field name="restaurant_order_channel"/>
+                    <field name="kitchen_send_policy"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
