@@ -125,9 +125,7 @@ class RestaurantKitchenOrder(models.Model):
                 
             unavailable_lines = []
             for line in order.line_ids:
-                if line.availability_status == 'not_checked':
-                    raise UserError(_("Please check availability before confirming this kitchen preparation order."))
-                elif line.availability_status == 'unavailable':
+                if line.availability_status == 'unavailable':
                     unavailable_lines.append(line)
                     
             if unavailable_lines:
