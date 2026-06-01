@@ -22,6 +22,8 @@
                 <separator/>
                 <filter string="Availability Checked" name="availability_checked" domain="[('availability_checked', '=', True)]"/>
                 <separator/>
+                <filter string="Tickets Generated" name="tickets_generated" domain="[('tickets_generated', '=', True)]"/>
+                <separator/>
                 <filter string="Today" name="today" domain="[('order_date', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))), ('order_date', '&lt;=', datetime.datetime.combine(context_today(), datetime.time(23,59,59)))]"/>
                 <separator/>
                 <filter string="Archived" name="archived" domain="[('active', '=', False)]" context="{'active_test': False}"/>
@@ -50,6 +52,7 @@
                 <field name="source_type"/>
                 <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-warning="state == 'confirmed'" decoration-primary="state == 'in_preparation'" decoration-success="state == 'ready'" decoration-muted="state == 'cancelled'"/>
                 <field name="availability_checked" widget="boolean_toggle" readonly="1"/>
+                <field name="ticket_count" optional="show"/>
                 <field name="active" column_invisible="True"/>
             </list>
         </field>

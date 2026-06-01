@@ -1,5 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Search View -->
+    <record id="view_restaurant_kitchen_ticket_search" model="ir.ui.view">
+        <field name="name">restaurant.kitchen.ticket.search</field>
+        <field name="model">restaurant.kitchen.ticket</field>
+        <field name="arch" type="xml">
+            <search string="Kitchen Tickets">
+                <field name="name"/>
+                <field name="order_id"/>
+                <field name="branch_id"/>
+                <field name="station_id"/>
+                <field name="state"/>
+                
+                <filter string="Waiting" name="waiting" domain="[('state', '=', 'waiting')]"/>
+                <filter string="In Progress" name="in_progress" domain="[('state', '=', 'in_progress')]"/>
+                <filter string="Ready" name="ready" domain="[('state', '=', 'ready')]"/>
+                <filter string="Cancelled" name="cancelled" domain="[('state', '=', 'cancelled')]"/>
+                
+                <group expand="0" string="Group By">
+                    <filter string="Station" name="group_station" context="{'group_by': 'station_id'}"/>
+                    <filter string="Branch" name="group_branch" context="{'group_by': 'branch_id'}"/>
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Order" name="group_order" context="{'group_by': 'order_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <!-- List View -->
     <record id="view_restaurant_kitchen_ticket_list" model="ir.ui.view">
         <field name="name">restaurant.kitchen.ticket.list</field>
@@ -12,6 +39,8 @@
                 <field name="station_id"/>
                 <field name="state" widget="badge" decoration-info="state == 'waiting'" decoration-warning="state == 'in_progress'" decoration-success="state == 'ready'" decoration-muted="state == 'cancelled'"/>
                 <field name="expected_prep_time"/>
+                <field name="started_at" optional="show"/>
+                <field name="ready_at" optional="show"/>
             </list>
         </field>
     </record>
@@ -23,6 +52,9 @@
         <field name="arch" type="xml">
             <form string="Kitchen Ticket" create="0" edit="0" delete="0">
                 <header>
+                    <button name="action_start" string="Start" type="object" class="oe_highlight" invisible="state != 'waiting'"/>
+                    <button name="action_mark_ready" string="Mark Ready" type="object" class="oe_highlight" invisible="state not in ('waiting', 'in_progress')"/>
+                    <button name="action_cancel" string="Cancel" type="object" invisible="state not in ('waiting', 'in_progress')"/>
                     <field name="state" widget="statusbar" statusbar_visible="waiting,in_progress,ready,cancelled"/>
                 </header>
                 <sheet>
@@ -41,6 +73,7 @@
                             <field name="expected_prep_time" readonly="1"/>
                             <field name="started_at" readonly="1"/>
                             <field name="ready_at" readonly="1"/>
+                            <field name="cancelled_at" readonly="1"/>
                         </group>
                     </group>
                     <notebook>

@@ -153,6 +153,28 @@ class RestaurantKitchenOrder(models.Model):
                 
             order.write({'state': 'confirmed'})
 
+    def _recompute_preparation_state(self):
+        for order in self:
+            if order.state in ('draft', 'cancelled'):
+                continue
+            
+            if not order.ticket_ids:
+                if order.tickets_generated and order.state != 'ready':
+                    order.write({'state': 'ready'})
+                continue
+
+            all_tickets_done = all(t.state in ('ready', 'cancelled') for t in order.ticket_ids)
+            any_ready = any(t.state == 'ready' for t in order.ticket_ids)
+            any_in_progress = any(t.state == 'in_progress' for t in order.ticket_ids)
+            any_waiting = any(t.state == 'waiting' for t in order.ticket_ids)
+
+            if all_tickets_done and any_ready:
+                order.write({'state': 'ready'})
+            elif any_in_progress:
+                order.write({'state': 'in_preparation'})
+            elif any_waiting:
+                order.write({'state': 'confirmed'})
+
     def action_check_availability(self):
         self.ensure_one()
         self._check_branch_operation_access()

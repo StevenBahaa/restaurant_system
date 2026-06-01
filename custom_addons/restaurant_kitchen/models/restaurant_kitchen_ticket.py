@@ -63,6 +63,57 @@ class RestaurantKitchenTicket(models.Model):
         records = super().create(vals_list)
         return records
 
+    def action_start(self):
+        self._check_branch_operation_access()
+        for ticket in self:
+            if ticket.state != 'waiting':
+                raise UserError(_("Ticket %s cannot be started because it is not in 'Waiting' state.") % ticket.name)
+        for ticket in self:
+            ticket.write({
+                'state': 'in_progress',
+                'started_at': fields.Datetime.now(),
+            })
+            ticket.line_ids.filtered(lambda l: l.state == 'waiting').write({
+                'state': 'in_progress'
+            })
+            if ticket.order_id:
+                ticket.order_id._recompute_preparation_state()
+
+    def action_mark_ready(self):
+        self._check_branch_operation_access()
+        for ticket in self:
+            if ticket.state not in ('waiting', 'in_progress'):
+                raise UserError(_("Ticket %s cannot be marked as ready because it is not in 'Waiting' or 'In Progress' state.") % ticket.name)
+        for ticket in self:
+            vals = {
+                'state': 'ready',
+                'ready_at': fields.Datetime.now(),
+            }
+            if not ticket.started_at:
+                vals['started_at'] = vals['ready_at']
+            ticket.write(vals)
+            ticket.line_ids.filtered(lambda l: l.state != 'cancelled').write({
+                'state': 'ready'
+            })
+            if ticket.order_id:
+                ticket.order_id._recompute_preparation_state()
+
+    def action_cancel(self):
+        self._check_branch_operation_access()
+        for ticket in self:
+            if ticket.state not in ('waiting', 'in_progress'):
+                raise UserError(_("Ticket %s cannot be cancelled because it is not in 'Waiting' or 'In Progress' state.") % ticket.name)
+        for ticket in self:
+            ticket.write({
+                'state': 'cancelled',
+                'cancelled_at': fields.Datetime.now(),
+            })
+            ticket.line_ids.filtered(lambda l: l.state != 'ready').write({
+                'state': 'cancelled'
+            })
+            if ticket.order_id:
+                ticket.order_id._recompute_preparation_state()
+
 class RestaurantKitchenTicketLine(models.Model):
     _name = 'restaurant.kitchen.ticket.line'
     _description = 'Kitchen Ticket Line'
@@ -123,7 +174,12 @@ class RestaurantKitchenTicketLine(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        self._check_ticket_state_for_changes()
+        # Only state updates may bypass the ticket state guard.
+        # These are applied by ticket workflow actions (action_start, action_mark_ready, action_cancel).
+        allowed_fields = {'state'}
+        is_only_state = all(k in allowed_fields for k in vals.keys())
+        if not is_only_state:
+            self._check_ticket_state_for_changes()
         # Also check if moving to another ticket, though usually not allowed via UI
         if 'ticket_id' in vals:
             new_ticket = self.env['restaurant.kitchen.ticket'].browse(vals['ticket_id'])
