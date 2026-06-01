@@ -38,6 +38,17 @@ class RestaurantKitchenOrder(models.Model):
     last_availability_check_on = fields.Datetime(string='Last Availability Check On', readonly=True)
     active = fields.Boolean(string='Active', default=True)
 
+    available_line_count = fields.Integer(string='Available Lines', compute='_compute_availability_counters')
+    unavailable_line_count = fields.Integer(string='Unavailable Lines', compute='_compute_availability_counters')
+    not_checked_line_count = fields.Integer(string='Not Checked Lines', compute='_compute_availability_counters')
+
+    @api.depends('line_ids.availability_status')
+    def _compute_availability_counters(self):
+        for order in self:
+            order.available_line_count = len(order.line_ids.filtered(lambda l: l.availability_status == 'available'))
+            order.unavailable_line_count = len(order.line_ids.filtered(lambda l: l.availability_status == 'unavailable'))
+            order.not_checked_line_count = len(order.line_ids.filtered(lambda l: l.availability_status == 'not_checked'))
+
     @api.constrains('branch_id', 'company_id')
     def _check_branch_company(self):
         for order in self:
@@ -49,7 +60,7 @@ class RestaurantKitchenOrder(models.Model):
     def _check_source_type(self):
         for order in self:
             if order.source_type != 'manual_demo':
-                raise ValidationError(_("sale_order and pos_order are reserved for future integrations and cannot be used in manual UC-E Step 2 creation."))
+                raise ValidationError(_("Only Manual Demo source is currently available from this screen. Sales Order and POS Order sources are reserved for future integrations."))
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -103,3 +114,47 @@ class RestaurantKitchenOrder(models.Model):
     def action_confirm(self):
         self._check_branch_operation_access()
         raise UserError(_("Confirm is not implemented yet."))
+
+    def action_check_availability(self):
+        self.ensure_one()
+        self._check_branch_operation_access()
+        if self.state != 'draft':
+            raise UserError(_("Availability can only be checked in draft state."))
+        if not self.branch_id:
+            raise UserError(_("Branch is required to check availability."))
+        if not self.line_ids:
+            raise UserError(_("At least one order line is required to check availability."))
+
+        at_datetime = self.order_date or fields.Datetime.now()
+        
+        for line in self.line_ids:
+            try:
+                payload = line.product_tmpl_id._get_unified_availability_payload(
+                    branch=self.branch_id,
+                    at_datetime=at_datetime,
+                    quantity=line.quantity,
+                    evaluate_all=True,
+                )
+            except AttributeError:
+                raise UserError(_("Missing unified availability resolver method on product.template."))
+                
+            prep_time = 0.0
+            try:
+                prep_time = line.product_tmpl_id._get_expected_prep_time(
+                    company=self.company_id,
+                    branch=self.branch_id,
+                )
+            except AttributeError:
+                pass
+                
+            line.write({
+                'availability_status': 'available' if payload.get('is_available') else 'unavailable',
+                'reason_code': payload.get('reason_code'),
+                'reason': payload.get('reason'),
+                'expected_prep_time': prep_time,
+            })
+            
+        self.write({
+            'availability_checked': True,
+            'last_availability_check_on': fields.Datetime.now(),
+        })

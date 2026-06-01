@@ -60,16 +60,59 @@ class RestaurantKitchenOrderLine(models.Model):
                 order = self.env['restaurant.kitchen.order'].browse(vals['order_id'])
                 if order.state != 'draft':
                     raise ValidationError(_("Order lines can only be created when the order is in draft state."))
-        return super().create(vals_list)
+                vals.update({
+                    'availability_status': 'not_checked',
+                    'reason_code': False,
+                    'reason': False,
+                    'expected_prep_time': 0.0,
+                })
+        
+        records = super().create(vals_list)
+        
+        draft_orders = records.mapped('order_id').filtered(lambda o: o.state == 'draft')
+        draft_orders.write({
+            'availability_checked': False,
+            'last_availability_check_on': False,
+        })
+        return records
 
     def write(self, vals):
         for line in self:
             if line.order_id.state != 'draft':
                 raise ValidationError(_("Order lines can only be modified when the order is in draft state."))
-        return super().write(vals)
+                
+        write_vals = dict(vals)
+        needs_reset = 'product_tmpl_id' in vals or 'quantity' in vals
+        if needs_reset:
+            write_vals.update({
+                'availability_status': 'not_checked',
+                'reason_code': False,
+                'reason': False,
+                'expected_prep_time': 0.0,
+                'routing_status': 'not_routed',
+                'routing_note': False,
+            })
+            
+        res = super().write(write_vals)
+        
+        if needs_reset:
+            draft_orders = self.mapped('order_id').filtered(lambda o: o.state == 'draft')
+            draft_orders.write({
+                'availability_checked': False,
+                'last_availability_check_on': False,
+            })
+        return res
 
     def unlink(self):
-        for line in self:
-            if line.order_id.state != 'draft':
-                raise ValidationError(_("Order lines can only be deleted when the order is in draft state."))
-        return super().unlink()
+        non_draft_lines = self.filtered(lambda l: l.order_id.state != 'draft')
+        if non_draft_lines:
+            raise ValidationError(_("Order lines can only be deleted when the order is in draft state."))
+            
+        draft_orders = self.mapped('order_id')
+        res = super().unlink()
+        
+        draft_orders.write({
+            'availability_checked': False,
+            'last_availability_check_on': False,
+        })
+        return res
