@@ -30,6 +30,7 @@
     ],
     "data": [
         "security/ir.model.access.csv",
+        "views/pos_config_views.xml",
     ],
     "installable": True,
     "application": False,

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="pos_config_view_form_inherit_restaurant_pos" model="ir.ui.view">
+        <field name="name">pos.config.form.inherit.restaurant.pos</field>
+        <field name="model">pos.config</field>
+        <field name="inherit_id" ref="point_of_sale.pos_config_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@id='title']" position="after">
+                <group name="restaurant_branch_group" string="Restaurant" invisible="context.get('pos_config_create_mode', False)">
+                    <field name="branch_id" options="{'no_create': True}" readonly="has_active_session"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
