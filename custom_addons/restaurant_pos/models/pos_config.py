@@ -51,3 +51,31 @@ class PosConfig(models.Model):
         """Check if this POS config is linked to a restaurant branch."""
         self.ensure_one()
         return bool(self.branch_id)
+
+    def _get_product_pos_availability_payload(self, product, quantity=1.0, at_datetime=None):
+        """Return POS availability payload for a product in this POS config branch context."""
+        self.ensure_one()
+        branch = self._get_restaurant_branch()
+        if not branch:
+            # Fallback safe payload if POS has no branch assigned
+            return {
+                "product_tmpl_id": product.product_tmpl_id.id if product._name == 'product.product' else product.id,
+                "product_name": product.display_name,
+                "branch_id": False,
+                "branch_name": False,
+                "company_id": False,
+                "is_available": False,
+                "available": False,
+                "availability_state": "unknown",
+                "reason_code": "branch_not_configured",
+                "reason": "POS configuration has no restaurant branch assigned.",
+                "checked_at": fields.Datetime.now(),
+                "source_payload": {},
+            }
+
+        product_tmpl = product.product_tmpl_id if product._name == 'product.product' else product
+        return product_tmpl._get_pos_availability_payload(
+            branch=branch,
+            quantity=quantity,
+            at_datetime=at_datetime,
+        )
