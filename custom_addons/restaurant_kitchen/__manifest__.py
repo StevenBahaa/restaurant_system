@@ -8,11 +8,16 @@
     "license": "LGPL-3",
     "depends": [
         "restaurant_base",
-        "restaurant_menu"
+        "restaurant_menu",
+        "restaurant_inventory",
+        "mail"
     ],
     "data": [
+        "data/restaurant_kitchen_sequences.xml",
         "security/restaurant_kitchen_security.xml",
         "security/ir.model.access.csv",
+        "views/restaurant_kitchen_order_views.xml",
+        "views/restaurant_kitchen_ticket_views.xml",
         "views/restaurant_kitchen_station_views.xml",
         "views/product_template_views.xml",
     ],

@@ -107,6 +107,7 @@ Examples of separate business concepts that must remain separate:
 - Do not use POS code unless explicitly approved.
 - Use Odoo 18 view syntax.
 - Use `<list>`, not `<tree>`.
+- Use `<chatter/>` outside the `<sheet>` tag and inside the `<form>` tag to add chatter in views, instead of the deprecated `<div class="oe_chatter">...</div>`.
 - Keep XML inheritance stable and avoid risky XPath expressions when possible.
 - When XPath is uncertain, inspect the original Odoo view before modifying.
 - Avoid duplicate inherited views that do the same job.
@@ -457,6 +458,9 @@ The following backend/domain areas have been completed:
 - UC-11 Control Stock-Linked Availability
 - UC-12 Configure Menu Scheduling
 - UC-D Demo Data Verification & Setup
+- **UC-A Unified Menu Availability Resolver** ✅
+- **UC-B Branch Menu Status Dashboard** ✅
+- **UC-E Kitchen Preparation Orders & Ticket Routing** ✅
 
 ## 17. Technical Learnings (UC-08 & UC-09)
 
@@ -478,15 +482,42 @@ The following backend/domain areas have been completed:
 
 - **Odoo 18 Storable Product Definition**: In Odoo 18 Community, the concept of a storable product (where "Track Inventory" is enabled in the UI) has changed. The `detailed_type` field has been removed entirely, and checking `type == 'product'` is no longer the correct way to identify storable goods. Instead, a storable product is configured with `type = 'consu'` (Consumable/Goods) AND `is_storable = True`. All backend verification and integration logic must exclusively use the `is_storable` boolean flag to determine if a product maintains stock quants.
 
+## 17.3 Technical Learnings (UC-E Kitchen Workflow)
+
+- **Multi-Record Safety Pattern**: When implementing workflow action methods (`action_start`, `action_mark_ready`, `action_cancel`) on a model, always run a full validation loop first before any write loop. This prevents partial updates when bulk actions are applied to mixed-state recordsets from the list view.
+- **Direct Assignment vs `write()` for Tracked Fields**: In Odoo 18, direct Python field assignment (`record.field = value`) bypasses `tracking=True` and will not produce chatter log entries. Always use `record.write({'field': value})` when the field has `tracking=True` to preserve audit trails.
+- **`allowed_fields` Bypass Pattern**: When a `write()` override blocks certain writes based on object state, define an explicit `allowed_fields` set for system-internal state propagation (e.g., workflow cascades from parent to children). Document this set with an inline comment explaining which callers are allowed to bypass the guard.
+- **Ticket-to-Order State Cascade**: Parent document state recomputation should be centralized in a single `_recompute_preparation_state()` helper called after every child state change, rather than inlined in each action. This keeps the state logic consistent across all workflow paths.
+- **No-Station Routing**: Items without a kitchen station assignment should not block ticket generation. They should be silently skipped, given a `routing_status = no_station_required` and a `routing_note`. If all items fall into this category, the parent order should automatically transition to `ready` upon generation.
+- **`cancelled_at` Timestamp Field**: Always expose all workflow timestamp fields (`started_at`, `ready_at`, `cancelled_at`) in the form view so kitchen staff can audit when a ticket was cancelled, not just when it was completed.
+- **Ticket Search View**: Stand-alone sub-models such as `restaurant.kitchen.ticket` that have their own top-level list action require their own `<search>` view. Do not rely on the parent order's search view.
+
 ## 18. Current Next Direction
 
-Next planned UC:
-UC-E
+UC-E is fully approved and closed as of 2026-06-01.
 
-Purpose:
-[To be defined by user in next prompt]
+### Completed Use Cases
 
-Expected future direction:
-- POS integrations
-- Kitchen routing workflows
-- Customer ordering UI
+| Use Case | Title | Status |
+|---|---|---|
+| UC-07 | Combo Meals | ✅ Complete |
+| UC-08 | Branch-Specific Availability | ✅ Complete |
+| UC-09 | Branch-Specific Pricing | ✅ Complete |
+| UC-10 | Preparation Time & Kitchen Station | ✅ Complete |
+| UC-11 | Stock-Linked Availability Control | ✅ Complete |
+| UC-12 | Menu Scheduling | ✅ Complete |
+| UC-D | Demo Data Verification & Setup | ✅ Complete |
+| UC-A | Unified Menu Availability Resolver | ✅ Complete |
+| UC-B | Branch Menu Status Dashboard | ✅ Complete |
+| UC-E | Kitchen Preparation Orders & Ticket Routing | ✅ Complete |
+
+### Expected Future Direction
+
+The following are planned but not yet started. Priority and scope to be confirmed by user:
+
+1. **POS Integration**: Connect `pos.order` to `restaurant.kitchen.order` so confirmed POS orders automatically generate Kitchen Preparation Orders.
+2. **Sale Order Integration**: Optionally link `sale.order` to Kitchen Preparation Orders for delivery/catering workflows.
+3. **Stock Deduction on Kitchen Confirmation**: Trigger ingredient stock moves when a Kitchen Preparation Order is confirmed.
+4. **Combo Component Routing**: Route combo components to individual stations based on their component product station assignments.
+5. **Custom Kitchen Screen (OWL/POS Frontend)**: A live kitchen display screen for staff to view and act on tickets in real time.
+6. **Accounting & Invoice Integration**: Link Kitchen Preparation Orders to billing when used in delivery/catering scenarios.
