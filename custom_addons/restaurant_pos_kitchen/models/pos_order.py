@@ -225,6 +225,11 @@ class PosOrder(models.Model):
             except Exception as e:
                 _logger.warning("Availability check failed for kitchen order %s: %s", new_order.name, e)
 
+        if self._should_auto_dispatch_kitchen_order():
+            # Automated POS-to-kitchen dispatch may run under cashier users.
+            # sudo is limited to Kitchen Order workflow execution while preserving business validations.
+            new_order.sudo()._safe_auto_dispatch_from_pos()
+
         return new_order
 
     def _safe_create_restaurant_kitchen_order_from_pos(self, trigger=False):

@@ -1,4 +1,7 @@
+import logging
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 class RestaurantKitchenOrder(models.Model):
     _inherit = 'restaurant.kitchen.order'
@@ -83,3 +86,43 @@ class RestaurantKitchenOrder(models.Model):
     def _can_auto_dispatch(self):
         self.ensure_one()
         return self._get_auto_dispatch_eligibility_payload().get("eligible", False)
+
+    def _safe_auto_dispatch_from_pos(self):
+        results = []
+        for order in self:
+            result = {
+                "kitchen_order_id": order.id,
+                "dispatched": False,
+                "reason_code": "unknown",
+                "reason": "Unknown state",
+            }
+            try:
+                eligibility = order._get_auto_dispatch_eligibility_payload()
+                if not eligibility.get("eligible"):
+                    _logger.info("Auto-dispatch skipped for Kitchen Order %s: %s - %s", order.id, eligibility.get("reason_code"), eligibility.get("reason"))
+                    result.update({
+                        "reason_code": eligibility.get("reason_code", "skipped"),
+                        "reason": eligibility.get("reason", "Skipped by eligibility checks"),
+                    })
+                    results.append(result)
+                    continue
+
+                _logger.info("Auto-dispatch started for Kitchen Order %s", order.id)
+                with self.env.cr.savepoint():
+                    order.action_confirm()
+                    order.action_generate_tickets()
+                _logger.info("Auto-dispatch success for Kitchen Order %s", order.id)
+                
+                result.update({
+                    "dispatched": True,
+                    "reason_code": "dispatched",
+                    "reason": "Kitchen order confirmed and tickets generated.",
+                })
+            except Exception as e:
+                _logger.warning("Auto-dispatch failure with exception for Kitchen Order %s: %s", order.id, e, exc_info=True)
+                result.update({
+                    "reason_code": "dispatch_exception",
+                    "reason": str(e),
+                })
+            results.append(result)
+        return results
