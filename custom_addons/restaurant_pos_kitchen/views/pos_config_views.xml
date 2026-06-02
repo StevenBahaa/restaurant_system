@@ -9,6 +9,7 @@
                 <group name="restaurant_kitchen_group" string="Kitchen Integration" invisible="context.get('pos_config_create_mode', False)">
                     <field name="restaurant_order_channel" readonly="has_active_session"/>
                     <field name="kitchen_send_policy" readonly="has_active_session"/>
+                    <field name="kitchen_dispatch_policy" readonly="has_active_session"/>
                 </group>
             </xpath>
         </field>

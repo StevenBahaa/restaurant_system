@@ -27,6 +27,17 @@ class PosConfig(models.Model):
         help="Controls when this POS configuration should create kitchen preparation orders.",
     )
 
+    kitchen_dispatch_policy = fields.Selection(
+        [
+            ("manual", "Manual Review"),
+            ("auto_dispatch", "Auto Dispatch If Available"),
+        ],
+        string="Kitchen Dispatch Policy",
+        default="manual",
+        required=True,
+        help="Controls whether POS-created Kitchen Orders remain for manual review or are automatically confirmed and dispatched when fully available and routable.",
+    )
+
     @api.onchange("restaurant_order_channel")
     def _onchange_restaurant_order_channel(self):
         for config in self:
@@ -38,6 +49,14 @@ class PosConfig(models.Model):
     def _get_kitchen_send_policy(self):
         self.ensure_one()
         return self.kitchen_send_policy
+
+    def _get_kitchen_dispatch_policy(self):
+        self.ensure_one()
+        return self.kitchen_dispatch_policy
+
+    def _should_auto_dispatch_kitchen_order(self):
+        self.ensure_one()
+        return self.kitchen_dispatch_policy == "auto_dispatch"
 
     def _should_create_kitchen_order_on_create(self):
         self.ensure_one()
