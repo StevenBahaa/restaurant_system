@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_restaurant_kitchen_ticket_form_inherit_pos_cancel" model="ir.ui.view">
+        <field name="name">restaurant.kitchen.ticket.form.inherit.pos.cancel</field>
+        <field name="model">restaurant.kitchen.ticket</field>
+        <field name="inherit_id" ref="restaurant_kitchen.view_restaurant_kitchen_ticket_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="before">
+                <group string="Cancellation / Recall" name="cancellation_recall" invisible="not cancellation_source and not recall_required">
+                    <group>
+                        <field name="cancellation_source"/>
+                        <field name="cancelled_from_pos_order_id" invisible="cancellation_source != 'pos_refund'"/>
+                        <field name="cancelled_at"/>
+                        <field name="cancelled_by_id"/>
+                    </group>
+                    <group>
+                        <field name="recall_required"/>
+                        <field name="recall_note" invisible="not recall_required"/>
+                        <field name="cancellation_reason"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_restaurant_kitchen_ticket_list_inherit_pos_cancel" model="ir.ui.view">
+        <field name="name">restaurant.kitchen.ticket.list.inherit.pos.cancel</field>
+        <field name="model">restaurant.kitchen.ticket</field>
+        <field name="inherit_id" ref="restaurant_kitchen.view_restaurant_kitchen_ticket_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="recall_required" optional="show" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

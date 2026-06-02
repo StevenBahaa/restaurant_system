@@ -14,6 +14,8 @@
         'security/ir.model.access.csv',
         'views/pos_config_views.xml',
         'views/pos_order_views.xml',
+        'views/restaurant_kitchen_order_views.xml',
+        'views/restaurant_kitchen_ticket_views.xml',
     ],
     'installable': True,
     'application': False,

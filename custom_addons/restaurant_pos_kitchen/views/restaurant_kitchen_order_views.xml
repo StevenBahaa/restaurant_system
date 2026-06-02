@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_restaurant_kitchen_order_form_inherit_pos_cancel" model="ir.ui.view">
+        <field name="name">restaurant.kitchen.order.form.inherit.pos.cancel</field>
+        <field name="model">restaurant.kitchen.order</field>
+        <field name="inherit_id" ref="restaurant_kitchen.view_restaurant_kitchen_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Cancellation / Recall" name="cancellation_recall" invisible="not cancellation_source and not recall_required">
+                    <group>
+                        <group>
+                            <field name="cancellation_source"/>
+                            <field name="cancelled_from_pos_order_id" invisible="cancellation_source != 'pos_refund'"/>
+                            <field name="cancelled_at"/>
+                            <field name="cancelled_by_id"/>
+                        </group>
+                        <group>
+                            <field name="recall_required"/>
+                            <field name="recall_note" invisible="not recall_required"/>
+                            <field name="cancellation_reason"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

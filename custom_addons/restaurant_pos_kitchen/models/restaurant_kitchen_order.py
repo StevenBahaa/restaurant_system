@@ -11,6 +11,14 @@ class RestaurantKitchenOrder(models.Model):
         ondelete={"pos_order": "set default"},
     )
 
+    cancelled_from_pos_order_id = fields.Many2one("pos.order", string="Cancelled From POS Refund Order", readonly=True, copy=False, index=True)
+    cancellation_source = fields.Selection([("manual", "Manual"), ("pos_refund", "POS Refund")], string="Cancellation Source", readonly=True, copy=False)
+    cancellation_reason = fields.Text(string="Cancellation Reason", readonly=True, copy=False)
+    cancelled_at = fields.Datetime(string="Cancelled At", readonly=True, copy=False)
+    cancelled_by_id = fields.Many2one("res.users", string="Cancelled By", readonly=True, copy=False)
+    recall_required = fields.Boolean(string="Recall Required", readonly=True, copy=False)
+    recall_note = fields.Text(string="Recall Note", readonly=True, copy=False)
+
     @api.model
     def _find_existing_source_order(self, source_type, source_model, source_res_id):
         if not source_res_id:
