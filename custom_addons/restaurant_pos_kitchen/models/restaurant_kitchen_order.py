@@ -150,7 +150,6 @@ class RestaurantKitchenOrder(models.Model):
             
         if lines_text:
             note += "Items affected:\n" + "\n".join(lines_text)
-            
         return note
 
     def _apply_pos_refund_recall(self, refund_pos_order, refund_lines=None):

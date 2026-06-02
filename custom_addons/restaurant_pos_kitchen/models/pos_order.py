@@ -255,9 +255,136 @@ class PosOrder(models.Model):
                 pos_order._safe_create_restaurant_kitchen_order_from_pos(trigger="_process_order")
         return order_id
 
+    def _get_refunded_pos_order_lines(self):
+        self.ensure_one()
+        if "refunded_orderline_id" not in self.env['pos.order.line']._fields:
+            return self.env['pos.order.line'].browse()
+        return self.lines.filtered(lambda l: l.refunded_orderline_id and l.qty < 0)
+
+    def _is_restaurant_pos_refund_order(self):
+        self.ensure_one()
+        return bool(self._get_refunded_pos_order_lines())
+
+    def _get_original_pos_orders_from_refund(self):
+        self.ensure_one()
+        refund_lines = self._get_refunded_pos_order_lines()
+        return refund_lines.mapped("refunded_orderline_id.order_id")
+
+    def _safe_trigger_kitchen_recall_for_refund(self, trigger=False):
+        results = []
+        for order in self:
+            result = {
+                "refund_pos_order_id": order.id,
+                "original_pos_order_ids": [],
+                "kitchen_order_ids": [],
+                "processed": False,
+                "reason_code": "unknown",
+                "reason": "Unknown error",
+            }
+            try:
+                if not order._is_restaurant_pos_refund_order():
+                    result.update({
+                        "reason_code": "not_a_refund",
+                        "reason": "Not a valid POS refund order.",
+                    })
+                    results.append(result)
+                    continue
+
+                original_orders = order._get_original_pos_orders_from_refund()
+                result["original_pos_order_ids"] = original_orders.ids
+
+                if not original_orders:
+                    result.update({
+                        "reason_code": "no_original_order",
+                        "reason": "No original POS orders resolved.",
+                    })
+                    results.append(result)
+                    continue
+
+                all_refund_lines = order._get_refunded_pos_order_lines()
+                all_service_results = []
+
+                for original_order in original_orders:
+                    # Filter matching refund lines strictly for this original order
+                    matching_refund_lines = all_refund_lines.filtered(
+                        lambda l: l.refunded_orderline_id.order_id.id == original_order.id
+                    )
+                    
+                    if not matching_refund_lines:
+                        continue
+
+                    # Sudo is strictly used here to allow POS cashiers to locate and safely update kitchen orders
+                    # they might not natively have read/write rights to if generated in different contexts.
+                    kitchen_orders = self.env["restaurant.kitchen.order"].sudo().search([
+                        ("source_type", "=", "pos_order"),
+                        ("source_model", "=", "pos.order"),
+                        ("source_res_id", "=", original_order.id),
+                    ])
+
+                    if not kitchen_orders:
+                        all_service_results.append({
+                            "processed": False,
+                            "reason_code": "no_kitchen_order",
+                        })
+                        continue
+
+                    result["kitchen_order_ids"].extend(kitchen_orders.ids)
+
+                    # Trigger the safe service natively verified in Step 3 ONLY with matching lines
+                    service_results = kitchen_orders._safe_apply_pos_refund_recall(
+                        refund_pos_order=order,
+                        refund_lines=matching_refund_lines,
+                        trigger=trigger
+                    )
+                    all_service_results.extend(service_results)
+
+                if not all_service_results or all(r.get("reason_code") == "no_kitchen_order" for r in all_service_results):
+                    result.update({
+                        "reason_code": "no_kitchen_order",
+                        "reason": "No related kitchen orders found for the original POS orders.",
+                    })
+                    results.append(result)
+                    continue
+
+                processed_any = any(r.get("processed") for r in all_service_results)
+                already_processed = bool(all_service_results) and all(r.get("reason_code") in ("already_processed", "already_cancelled") for r in all_service_results)
+
+                if already_processed:
+                    result.update({
+                        "processed": False,
+                        "reason_code": "already_processed",
+                        "reason": "Recall already processed natively.",
+                    })
+                else:
+                    result.update({
+                        "processed": processed_any,
+                        "reason_code": "recall_triggered" if processed_any else "no_action_taken",
+                        "reason": f"Recall service executed. Details: {[r.get('reason_code') for r in all_service_results]}",
+                    })
+
+            except Exception as e:
+                _logger.error(
+                    "Safe trigger kitchen recall failed for POS Order %s (Trigger: %s). Error: %s",
+                    order.name,
+                    trigger,
+                    e,
+                    exc_info=True,
+                )
+                result.update({
+                    "processed": False,
+                    "reason_code": "exception",
+                    "reason": str(e),
+                })
+            results.append(result)
+        return results
+
     def action_pos_order_paid(self):
         res = super().action_pos_order_paid()
         for order in self:
             if order._get_kitchen_send_policy() == "on_payment_validation":
                 order._safe_create_restaurant_kitchen_order_from_pos(trigger="action_pos_order_paid")
+            
+            if order._is_restaurant_pos_refund_order():
+                order._safe_trigger_kitchen_recall_for_refund(trigger="action_pos_order_paid")
+                
         return res
