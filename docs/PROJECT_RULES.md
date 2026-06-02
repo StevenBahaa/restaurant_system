@@ -462,6 +462,7 @@ The following backend/domain areas have been completed:
 - **UC-B Branch Menu Status Dashboard** ✅
 - **UC-E Kitchen Preparation Orders & Ticket Routing** ✅
 - **UC-G POS Order to Kitchen Integration** ✅
+- **UC-H Kitchen Auto Dispatch Policy** ✅
 
 ## 17. Technical Learnings (UC-08 & UC-09)
 
@@ -500,6 +501,11 @@ The following backend/domain areas have been completed:
 - **Dynamic Field Writing**: When a bridge module prepares dictionaries to create records in a downstream module, dynamically evaluating `target_model._fields` prevents hard crashes. This guarantees that missing fields or uninstalled add-ons do not break the payload generation.
 - **Sudo Constraint in Hooks**: `sudo()` usage inside POS hooks should be rigidly constrained to isolated cross-module database actions (such as duplicate lookups or the final `.create()` call) without exposing the entire `pos.order` logic or context to superuser privileges.
 
+## 17.5 Technical Learnings (UC-H Auto Dispatch)
+
+- **Odoo 18 Frontend Sync Payload (`sync_from_ui`)**: Odoo 18 completely refactored the legacy `create_from_ui` endpoint into `sync_from_ui`. The JSON-RPC payload no longer wraps order dictionaries inside a `data` envelope. Furthermore, legacy fields such as `uid`, `creation_date`, and `statement_ids` have been entirely dropped in favor of `uuid`, ORM-managed `create_date`, and `payment_ids`. Any manual tests spoofing frontend behavior must adhere perfectly to this flattened structure.
+- **Atomic Database Savepoints (`env.cr.savepoint`)**: When integrating multiple sequential state mutations (`action_confirm`, `action_generate_tickets`) inside a backend lifecycle hook, wrapping them in a PostgreSQL savepoint flawlessly guarantees atomicity. If a networking crash breaks ticket generation, the savepoint catches the `Exception`, reverts the `KitchenOrder` cleanly to `draft`, and swallows the error before it can collapse the upstream POS JS client synchronization.
+
 ## 18. Current Next Direction
 
 UC-E is fully approved and closed as of 2026-06-01.
@@ -519,6 +525,7 @@ UC-E is fully approved and closed as of 2026-06-01.
 | UC-B | Branch Menu Status Dashboard | ✅ Complete |
 | UC-E | Kitchen Preparation Orders & Ticket Routing | ✅ Complete |
 | UC-G | POS Order to Kitchen Integration | ✅ Complete |
+| UC-H | Kitchen Auto Dispatch Policy | ✅ Complete |
 
 ### Expected Future Direction
 
