@@ -1,0 +1,40 @@
+.restaurant-pos-availability-badge {
+    /* Layout & Positioning */
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    z-index: 15;
+    pointer-events: none; /* Prevents blocking clicks on the product */
+    
+    /* Typography & Sizing */
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    line-height: 1.2;
+    
+    /* Safeties for long text like "Branch Missing" */
+    max-width: calc(100% - 24px); /* Leave room for native info tag */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    
+    /* Visual Depth */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+    
+    /* Variants */
+    &.restaurant-pos-availability-badge-danger {
+        background-color: #dc3545; /* Bootstrap Danger Red */
+        color: #ffffff;
+    }
+
+    &.restaurant-pos-availability-badge-warning {
+        background-color: #ffc107; /* Bootstrap Warning Amber */
+        color: #212529;
+    }
+
+    &.restaurant-pos-availability-badge-secondary {
+        background-color: #6c757d; /* Bootstrap Secondary Gray */
+        color: #ffffff;
+    }
+}

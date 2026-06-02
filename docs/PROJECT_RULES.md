@@ -463,6 +463,7 @@ The following backend/domain areas have been completed:
 - **UC-E Kitchen Preparation Orders & Ticket Routing** ✅
 - **UC-G POS Order to Kitchen Integration** ✅
 - **UC-H Kitchen Auto Dispatch Policy** ✅
+- **UC-I POS Availability Backend Loader** ✅
 
 ## 17. Technical Learnings (UC-08 & UC-09)
 
@@ -506,6 +507,11 @@ The following backend/domain areas have been completed:
 - **Odoo 18 Frontend Sync Payload (`sync_from_ui`)**: Odoo 18 completely refactored the legacy `create_from_ui` endpoint into `sync_from_ui`. The JSON-RPC payload no longer wraps order dictionaries inside a `data` envelope. Furthermore, legacy fields such as `uid`, `creation_date`, and `statement_ids` have been entirely dropped in favor of `uuid`, ORM-managed `create_date`, and `payment_ids`. Any manual tests spoofing frontend behavior must adhere perfectly to this flattened structure.
 - **Atomic Database Savepoints (`env.cr.savepoint`)**: When integrating multiple sequential state mutations (`action_confirm`, `action_generate_tickets`) inside a backend lifecycle hook, wrapping them in a PostgreSQL savepoint flawlessly guarantees atomicity. If a networking crash breaks ticket generation, the savepoint catches the `Exception`, reverts the `KitchenOrder` cleanly to `draft`, and swallows the error before it can collapse the upstream POS JS client synchronization.
 
+## 17.6 Technical Learnings (UC-I POS Availability Loader)
+
+- **Odoo 18 Session Injection (`load_data`)**: Do not extend `product.product` with highly contextual computed fields just for the POS to ingest them. Instead, intercept `super().load_data()` on `pos.session` and append a dedicated backend payload dictionary natively into the returned map `response["pos.session"]["data"][0]`. This perfectly centralizes the data lookup, kills N+1 loading queries, and dramatically lightens the JSON serialization load.
+- **Strict Try/Except Isolation in Boot Paths**: When mutating baseline Odoo dictionaries during critical initialization points (e.g., `load_data`), aggressively contain custom processing loops inside `try...except Exception` blocks that log with `exc_info=True`. If the backend resolver trips over unexpected runtime data, this strictly enforces that the Odoo `response` dictionary returns unscathed, ensuring the cashier interface never freezes or bricks on login.
+
 ## 18. Current Next Direction
 
 UC-E is fully approved and closed as of 2026-06-01.
@@ -526,14 +532,15 @@ UC-E is fully approved and closed as of 2026-06-01.
 | UC-E | Kitchen Preparation Orders & Ticket Routing | ✅ Complete |
 | UC-G | POS Order to Kitchen Integration | ✅ Complete |
 | UC-H | Kitchen Auto Dispatch Policy | ✅ Complete |
+| UC-I | POS Availability Backend Loader | ✅ Complete |
 
 ### Expected Future Direction
 
 The following are planned but not yet started. Priority and scope to be confirmed by user:
 
-1. **POS Integration**: Connect `pos.order` to `restaurant.kitchen.order` so confirmed POS orders automatically generate Kitchen Preparation Orders.
-2. **Sale Order Integration**: Optionally link `sale.order` to Kitchen Preparation Orders for delivery/catering workflows.
-3. **Stock Deduction on Kitchen Confirmation**: Trigger ingredient stock moves when a Kitchen Preparation Order is confirmed.
+1. **POS UI Badges (Frontend)**: Patch `ProductCard` OWL components to dynamically map the injected availability data onto the UI without further backend requests.
+2. **Cancellation & Void Workflows**: Map POS voids back into Kitchen Tickets and track stock spillage/wastage.
+3. **Manual Availability Refresh**: RPC controller to pull fresh availability mapping arrays asynchronously mid-session.
 4. **Combo Component Routing**: Route combo components to individual stations based on their component product station assignments.
 5. **Custom Kitchen Screen (OWL/POS Frontend)**: A live kitchen display screen for staff to view and act on tickets in real time.
 6. **Accounting & Invoice Integration**: Link Kitchen Preparation Orders to billing when used in delivery/catering scenarios.

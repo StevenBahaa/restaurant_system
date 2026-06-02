@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="restaurant_pos.ProductCardAvailabilityBadge" t-inherit="point_of_sale.ProductCard" t-inherit-mode="extension">
+        <xpath expr="//article" position="inside">
+            <t t-if="shouldShowRestaurantAvailabilityBadge">
+                <div t-attf-class="restaurant-pos-availability-badge {{ restaurantAvailabilityBadgeClass }}">
+                    <t t-esc="restaurantAvailabilityBadgeLabel"/>
+                </div>
+            </t>
+        </xpath>
+    </t>
+</templates>
