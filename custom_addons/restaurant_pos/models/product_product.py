@@ -56,7 +56,7 @@ class ProductProduct(models.Model):
                     "reason": reason,
                     "checked_at": checked_at_str,
                 }
-            except Exception as e:
+            except Exception:
                 _logger.error(
                     "POS Availability Bulk Resolver crashed for Product %s (Template %s) on Branch %s",
                     product.id,
