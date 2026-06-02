@@ -464,6 +464,7 @@ The following backend/domain areas have been completed:
 - **UC-G POS Order to Kitchen Integration** ✅
 - **UC-H Kitchen Auto Dispatch Policy** ✅
 - **UC-I POS Availability Backend Loader** ✅
+- **UC-J POS UI Badges (Frontend Consumption)** ✅
 
 ## 17. Technical Learnings (UC-08 & UC-09)
 
@@ -512,9 +513,15 @@ The following backend/domain areas have been completed:
 - **Odoo 18 Session Injection (`load_data`)**: Do not extend `product.product` with highly contextual computed fields just for the POS to ingest them. Instead, intercept `super().load_data()` on `pos.session` and append a dedicated backend payload dictionary natively into the returned map `response["pos.session"]["data"][0]`. This perfectly centralizes the data lookup, kills N+1 loading queries, and dramatically lightens the JSON serialization load.
 - **Strict Try/Except Isolation in Boot Paths**: When mutating baseline Odoo dictionaries during critical initialization points (e.g., `load_data`), aggressively contain custom processing loops inside `try...except Exception` blocks that log with `exc_info=True`. If the backend resolver trips over unexpected runtime data, this strictly enforces that the Odoo `response` dictionary returns unscathed, ensuring the cashier interface never freezes or bricks on login.
 
+## 17.7 Technical Learnings (UC-J POS UI Badges)
+
+- **Odoo 18 XML Inheritance (Dynamic Classes)**: The QWeb XPath function `hasclass('product')` evaluates strictly against the static `class="..."` attribute string. If a core template (like `ProductCard`) utilizes a dynamic `t-attf-class="{{props.class}} product"` definition, `hasclass` will fail at compile time. In these scenarios, fallback to structurally stable roots like `//article`.
+- **Decoupled Frontend Reactivity**: Do not use RPC calls to evaluate UI availability states. By reading directly from the pre-loaded `this.env.services.pos.session._restaurant_availability_map` securely inside a component getter, the interface renders instantaneously without network latency.
+- **Ghost Overlays (Non-blocking UI)**: Always enforce `pointer-events: none` on absolutely positioned badges that float over clickable assets (like POS product cards). This guarantees that cashiers can tap directly through the badge into the native `onClick` handler without disruption.
+
 ## 18. Current Next Direction
 
-UC-E is fully approved and closed as of 2026-06-01.
+UC-J is fully approved and closed as of 2026-06-02.
 
 ### Completed Use Cases
 
@@ -533,14 +540,14 @@ UC-E is fully approved and closed as of 2026-06-01.
 | UC-G | POS Order to Kitchen Integration | ✅ Complete |
 | UC-H | Kitchen Auto Dispatch Policy | ✅ Complete |
 | UC-I | POS Availability Backend Loader | ✅ Complete |
+| UC-J | POS UI Badges (Frontend Consumption) | ✅ Complete |
 
 ### Expected Future Direction
 
 The following are planned but not yet started. Priority and scope to be confirmed by user:
 
-1. **POS UI Badges (Frontend)**: Patch `ProductCard` OWL components to dynamically map the injected availability data onto the UI without further backend requests.
-2. **Cancellation & Void Workflows**: Map POS voids back into Kitchen Tickets and track stock spillage/wastage.
-3. **Manual Availability Refresh**: RPC controller to pull fresh availability mapping arrays asynchronously mid-session.
+1. **Cancellation & Void Workflows**: Map POS voids back into Kitchen Tickets and track stock spillage/wastage.
+2. **Manual Availability Refresh**: RPC controller to pull fresh availability mapping arrays asynchronously mid-session.
 4. **Combo Component Routing**: Route combo components to individual stations based on their component product station assignments.
 5. **Custom Kitchen Screen (OWL/POS Frontend)**: A live kitchen display screen for staff to view and act on tickets in real time.
 6. **Accounting & Invoice Integration**: Link Kitchen Preparation Orders to billing when used in delivery/catering scenarios.

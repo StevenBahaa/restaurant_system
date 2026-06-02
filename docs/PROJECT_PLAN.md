@@ -47,6 +47,7 @@ This project builds a full Restaurant & Cloud Kitchen ERP on Odoo 18 Community, 
 | UC-G | POS Order to Kitchen Integration | `restaurant_pos_kitchen` | ✅ |
 | UC-H | Kitchen Auto Dispatch Policy | `restaurant_pos_kitchen` | ✅ |
 | UC-I | POS Availability Backend Loader | `restaurant_pos` | ✅ |
+| UC-J | POS UI Badges (Frontend Consumption) | `restaurant_pos` | ✅ |
 
 ---
 
@@ -226,6 +227,37 @@ POS Order Sync (JS UI)
 
 ---
 
+## UC-J POS UI Badges (Frontend) — Detailed Summary
+
+**Approved Plan:** `docs/plans/UC-J_pos_availability_badges_plan.md`  
+**Verification Report:** `docs/tests/UC-J_pos_availability_badges_verification_report.md`  
+
+### Steps Completed
+
+| Step | Title | Status |
+|---|---|---|
+| Step 1 | Architecture Inspection & Plan | ✅ |
+| Step 2 | Add POS Asset Skeleton & Verify Asset Loading | ✅ |
+| Step 3 | XML Template Extension | ✅ |
+| Step 4 | JS Component Availability Logic | ✅ |
+| Step 5 | UI/UX Polish & SCSS | ✅ |
+| Step 6 | UI & Payload Deep Verification | ✅ |
+
+### Key Architecture Introduced
+
+- **Component Patching:** Extended Odoo 18's native `ProductCard` component dynamically using `@web/core/utils/patch` to inject reactive getters that consume the `pos.session` availability payload instantaneously without RPC overhead.
+- **Safe Template Inheritance:** Inherited `point_of_sale.ProductCard` via XML extension, utilizing a highly defensive `//article` XPath to safely bypass dynamic `t-attf-class` compile-time failures.
+- **Non-Blocking UI Design:** Constructed an absolutely positioned `.restaurant-pos-availability-badge` overlay that strictly enforces `pointer-events: none` to guarantee the cashier's touch targets remain fully intact.
+
+### Test Results
+
+| Test Suite | Coverage | Result |
+|---|---|---|
+| UI Logic Validation | Reason code mapping, fallback evaluations, and click protection | ✅ PASS |
+| End-to-End Payload Check | Verified explicit payload extraction handling for active and unmapped states (e.g., `schedule_unavailable`, `not_menu_item`) | ✅ PASS |
+
+---
+
 ## Known Limitations & Deferred Scope
 
 The following items are **intentionally out of scope** for all currently completed UCs. They are documented here for planning purposes:
@@ -247,7 +279,6 @@ The following items are **intentionally out of scope** for all currently complet
 
 | ID | Title | Depends On | Priority |
 |---|---|---|---|
-| UC-J | POS UI Badges (Frontend Consumption) | UC-I | High |
 | UC-K | Cancellation & Void Workflows | UC-E, UC-G | High |
 | UC-L | Manual Availability Refresh | UC-I | Medium |
 | UC-M | Combo Component Routing | UC-E, UC-07 | Medium |
