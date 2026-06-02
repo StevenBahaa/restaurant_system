@@ -1,4 +1,8 @@
+import logging
+
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class PosOrder(models.Model):
@@ -81,3 +85,122 @@ class PosOrder(models.Model):
                 order.kitchen_send_policy = config.kitchen_send_policy
             if not order.restaurant_branch_id and config.branch_id:
                 order.restaurant_branch_id = config.branch_id
+
+    def _prepare_restaurant_kitchen_order_line_vals(self, pos_line):
+        line_fields = self.env["restaurant.kitchen.order.line"]._fields
+        if "product_tmpl_id" not in line_fields or "quantity" not in line_fields:
+            _logger.warning("Missing mandatory target fields on restaurant.kitchen.order.line")
+            return {}
+            
+        vals = {
+            "product_tmpl_id": pos_line.product_id.product_tmpl_id.id,
+            "quantity": pos_line.qty,
+        }
+        if "note" in line_fields:
+            source_note = getattr(pos_line, "customer_note", False) or getattr(pos_line, "note", False)
+            if source_note:
+                vals["note"] = source_note
+        return vals
+
+    def _prepare_restaurant_kitchen_order_vals(self, branch, kitchen_lines_vals):
+        order_fields = self.env["restaurant.kitchen.order"]._fields
+        if "line_ids" not in order_fields:
+            _logger.warning("Missing mandatory line_ids field on restaurant.kitchen.order")
+            return {}
+            
+        company = self.company_id or branch.company_id
+        
+        vals = {
+            "line_ids": [(0, 0, line_vals) for line_vals in kitchen_lines_vals]
+        }
+        if "source_type" in order_fields:
+            vals["source_type"] = "pos_order"
+        if "source_model" in order_fields:
+            vals["source_model"] = "pos.order"
+        if "source_res_id" in order_fields:
+            vals["source_res_id"] = self.id
+        if "source_reference" in order_fields:
+            vals["source_reference"] = self.pos_reference or self.name
+        if "branch_id" in order_fields:
+            vals["branch_id"] = branch.id
+        if "company_id" in order_fields:
+            vals["company_id"] = company.id
+        if "partner_id" in order_fields and self.partner_id:
+            vals["partner_id"] = self.partner_id.id
+        if "order_date" in order_fields:
+            vals["order_date"] = self.date_order
+        if "note" in order_fields:
+            source_note = getattr(self, "note", False)
+            if source_note:
+                vals["note"] = source_note
+            
+        return vals
+
+    def _create_restaurant_kitchen_order_from_pos(self):
+        self.ensure_one()
+
+        KitchenOrder = self.env["restaurant.kitchen.order"]
+
+        # Duplicate prevention (sudo used to prevent false negatives if cashier lacks global read ACL)
+        existing = KitchenOrder.sudo()._find_existing_source_order("pos_order", "pos.order", self.id)
+        if existing:
+            _logger.info("Kitchen order already exists for POS order %s (ID: %s).", self.name, existing.id)
+            return existing
+
+        # Policy check
+        policy = self._get_kitchen_send_policy()
+        if not policy or policy == "manual":
+            _logger.info("Kitchen send policy is 'manual' (or unset) for POS order %s. Skipping creation.", self.name)
+            return KitchenOrder.browse()
+
+        # Branch resolution
+        branch = self._get_restaurant_branch()
+        if not branch:
+            _logger.warning("No restaurant branch configured for POS order %s. Skipping kitchen order.", self.name)
+            return KitchenOrder.browse()
+
+        company = self.company_id or branch.company_id
+        if branch.company_id and branch.company_id != company:
+            _logger.warning("Branch company mismatch for POS order %s. Skipping kitchen order.", self.name)
+            return KitchenOrder.browse()
+
+        # Menu line filtering
+        valid_lines = self.lines.filtered(
+            lambda l: l.qty > 0 
+            and l.product_id 
+            and getattr(l.product_id.product_tmpl_id, "is_menu_item", False)
+        )
+
+        if not valid_lines:
+            _logger.info("No valid menu lines found for POS order %s. Skipping kitchen order.", self.name)
+            return KitchenOrder.browse()
+
+        # Prepare values
+        kitchen_lines_vals = [
+            vals for vals in (self._prepare_restaurant_kitchen_order_line_vals(line) for line in valid_lines) 
+            if vals
+        ]
+        
+        if not kitchen_lines_vals:
+            _logger.warning("No valid kitchen line values prepared for POS order %s. Skipping.", self.name)
+            return KitchenOrder.browse()
+            
+        vals = self._prepare_restaurant_kitchen_order_vals(branch, kitchen_lines_vals)
+        
+        if not vals or "line_ids" not in vals:
+            _logger.warning("Failed to prepare mandatory kitchen order values for POS order %s. Skipping.", self.name)
+            return KitchenOrder.browse()
+
+        # Isolated sudo create to allow cashiers to generate backend orders without full Kitchen App access
+        new_order = KitchenOrder.sudo().create(vals)
+        _logger.info("Successfully created kitchen order %s for POS order %s.", new_order.name, self.name)
+
+        # Availability check wrapper
+        availability_method = getattr(new_order, "action_check_availability", None)
+        if callable(availability_method):
+            try:
+                availability_method()
+            except Exception as e:
+                _logger.warning("Availability check failed for kitchen order %s: %s", new_order.name, e)
+
+        return new_order
