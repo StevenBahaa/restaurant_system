@@ -10,6 +10,7 @@
                     <field name="restaurant_branch_id"/>
                     <field name="restaurant_order_channel"/>
                     <field name="kitchen_send_policy"/>
+                    <field name="kitchen_dispatch_policy"/>
                 </group>
             </xpath>
         </field>

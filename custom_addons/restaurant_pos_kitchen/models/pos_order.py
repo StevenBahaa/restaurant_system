@@ -30,6 +30,16 @@ class PosOrder(models.Model):
         help="Actual kitchen send policy for this POS order. Defaults from POS configuration.",
     )
 
+    kitchen_dispatch_policy = fields.Selection(
+        [
+            ("manual", "Manual Review"),
+            ("auto_dispatch", "Auto Dispatch If Available"),
+        ],
+        string="Kitchen Dispatch Policy",
+        copy=False,
+        help="Actual dispatch policy snapshot for this POS order. Defaults from POS configuration.",
+    )
+
     restaurant_branch_id = fields.Many2one(
         "restaurant.branch",
         string="Restaurant Branch",
@@ -46,6 +56,14 @@ class PosOrder(models.Model):
     def _get_kitchen_send_policy(self):
         self.ensure_one()
         return self.kitchen_send_policy or self.config_id.kitchen_send_policy
+
+    def _get_kitchen_dispatch_policy(self):
+        self.ensure_one()
+        return self.kitchen_dispatch_policy or self.config_id.kitchen_dispatch_policy
+
+    def _should_auto_dispatch_kitchen_order(self):
+        self.ensure_one()
+        return self._get_kitchen_dispatch_policy() == "auto_dispatch"
 
     def _get_restaurant_branch(self):
         self.ensure_one()
@@ -67,6 +85,8 @@ class PosOrder(models.Model):
                     vals["restaurant_order_channel"] = config.restaurant_order_channel
                 if not vals.get("kitchen_send_policy") and config.kitchen_send_policy:
                     vals["kitchen_send_policy"] = config.kitchen_send_policy
+                if not vals.get("kitchen_dispatch_policy") and config.kitchen_dispatch_policy:
+                    vals["kitchen_dispatch_policy"] = config.kitchen_dispatch_policy
                 if not vals.get("restaurant_branch_id") and config.branch_id:
                     vals["restaurant_branch_id"] = config.branch_id.id
 
@@ -83,6 +103,8 @@ class PosOrder(models.Model):
                 order.restaurant_order_channel = config.restaurant_order_channel
             if not order.kitchen_send_policy:
                 order.kitchen_send_policy = config.kitchen_send_policy
+            if not order.kitchen_dispatch_policy:
+                order.kitchen_dispatch_policy = config.kitchen_dispatch_policy
             if not order.restaurant_branch_id and config.branch_id:
                 order.restaurant_branch_id = config.branch_id
 
