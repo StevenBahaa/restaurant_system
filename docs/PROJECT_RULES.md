@@ -461,6 +461,8 @@ The following backend/domain areas have been completed:
 - **UC-A Unified Menu Availability Resolver** ✅
 - **UC-B Branch Menu Status Dashboard** ✅
 - **UC-E Kitchen Preparation Orders & Ticket Routing** ✅
+- **UC-G POS Order to Kitchen Integration** ✅
+- **UC-H Kitchen Auto Dispatch Policy** ✅
 
 ## 17. Technical Learnings (UC-08 & UC-09)
 
@@ -492,6 +494,18 @@ The following backend/domain areas have been completed:
 - **`cancelled_at` Timestamp Field**: Always expose all workflow timestamp fields (`started_at`, `ready_at`, `cancelled_at`) in the form view so kitchen staff can audit when a ticket was cancelled, not just when it was completed.
 - **Ticket Search View**: Stand-alone sub-models such as `restaurant.kitchen.ticket` that have their own top-level list action require their own `<search>` view. Do not rely on the parent order's search view.
 
+## 17.4 Technical Learnings (UC-G POS Integration)
+
+- **Safe POS Lifecycle Hooks**: When extending `pos.order._process_order` or `action_pos_order_paid`, external integration logic must be executed *after* calling `super()` and should be wrapped in a broad `try/except` block. This ensures that failures in backend integrations (e.g., kitchen routing) never crash or block the native POS offline synchronization thread.
+- **Snapshot Configs onto Orders**: Critical operational routing rules (like `kitchen_send_policy` and `restaurant_order_channel`) must be snapshotted from `pos.config` onto the `pos.order` itself at creation. This maintains historical immutability and allows explicit order-level overrides (e.g., a specific order taking a different channel than the default terminal configuration).
+- **Dynamic Field Writing**: When a bridge module prepares dictionaries to create records in a downstream module, dynamically evaluating `target_model._fields` prevents hard crashes. This guarantees that missing fields or uninstalled add-ons do not break the payload generation.
+- **Sudo Constraint in Hooks**: `sudo()` usage inside POS hooks should be rigidly constrained to isolated cross-module database actions (such as duplicate lookups or the final `.create()` call) without exposing the entire `pos.order` logic or context to superuser privileges.
+
+## 17.5 Technical Learnings (UC-H Auto Dispatch)
+
+- **Odoo 18 Frontend Sync Payload (`sync_from_ui`)**: Odoo 18 completely refactored the legacy `create_from_ui` endpoint into `sync_from_ui`. The JSON-RPC payload no longer wraps order dictionaries inside a `data` envelope. Furthermore, legacy fields such as `uid`, `creation_date`, and `statement_ids` have been entirely dropped in favor of `uuid`, ORM-managed `create_date`, and `payment_ids`. Any manual tests spoofing frontend behavior must adhere perfectly to this flattened structure.
+- **Atomic Database Savepoints (`env.cr.savepoint`)**: When integrating multiple sequential state mutations (`action_confirm`, `action_generate_tickets`) inside a backend lifecycle hook, wrapping them in a PostgreSQL savepoint flawlessly guarantees atomicity. If a networking crash breaks ticket generation, the savepoint catches the `Exception`, reverts the `KitchenOrder` cleanly to `draft`, and swallows the error before it can collapse the upstream POS JS client synchronization.
+
 ## 18. Current Next Direction
 
 UC-E is fully approved and closed as of 2026-06-01.
@@ -510,6 +524,8 @@ UC-E is fully approved and closed as of 2026-06-01.
 | UC-A | Unified Menu Availability Resolver | ✅ Complete |
 | UC-B | Branch Menu Status Dashboard | ✅ Complete |
 | UC-E | Kitchen Preparation Orders & Ticket Routing | ✅ Complete |
+| UC-G | POS Order to Kitchen Integration | ✅ Complete |
+| UC-H | Kitchen Auto Dispatch Policy | ✅ Complete |
 
 ### Expected Future Direction
 
