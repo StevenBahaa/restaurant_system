@@ -46,6 +46,7 @@ This project builds a full Restaurant & Cloud Kitchen ERP on Odoo 18 Community, 
 | UC-E | Kitchen Preparation Orders & Ticket Routing | `restaurant_kitchen` | ✅ |
 | UC-G | POS Order to Kitchen Integration | `restaurant_pos_kitchen` | ✅ |
 | UC-H | Kitchen Auto Dispatch Policy | `restaurant_pos_kitchen` | ✅ |
+| UC-I | POS Availability Backend Loader | `restaurant_pos` | ✅ |
 
 ---
 
@@ -196,6 +197,35 @@ POS Order Sync (JS UI)
 
 ---
 
+## UC-I POS Availability Backend Loader — Detailed Summary
+
+**Approved Plan:** `docs/plans/UC-I_pos_availability_backend_loader_plan.md`  
+**Verification Report:** `docs/tests/UC-I_pos_availability_backend_loader_report.md`  
+
+### Steps Completed
+
+| Step | Title | Status |
+|---|---|---|
+| Step 1 | Inspect & Confirm Odoo 18 POS Loader Hook | ✅ |
+| Step 2 | Add Backend Bulk Availability Resolver | ✅ |
+| Step 3 | Inject Availability Map into Session Response | ✅ |
+| Step 4 | Final Backend Loader QA and Report | ✅ |
+
+### Key Architecture Introduced
+
+- **Hook Interception:** Intercepted the native `pos.session.load_data()` returning pipeline.
+- **Bulk Resolver:** Implemented `ProductProduct._get_pos_availability_payload_bulk` to rapidly index all POS products against the branch configuration in a single sequence.
+- **Payload Schema:** Injected a localized `_restaurant_availability_map` directly into `response["pos.session"]["data"][0]`, bypassing expensive per-record ORM compute triggers and minimizing JSON expansion.
+- **Crash Safeties:** Complete Try/Except wrapping inside `pos.session` combined with per-product exception isolation ensures the POS login process remains 100% immune to custom backend logic crashes.
+
+### Test Results
+
+| Test Suite | Coverage | Result |
+|---|---|---|
+| Injection QA Matrix | Payload mapping, key alignment, exception trapping, and fallback structural verification (8 points) | ✅ PASS |
+
+---
+
 ## Known Limitations & Deferred Scope
 
 The following items are **intentionally out of scope** for all currently completed UCs. They are documented here for planning purposes:
@@ -217,13 +247,14 @@ The following items are **intentionally out of scope** for all currently complet
 
 | ID | Title | Depends On | Priority |
 |---|---|---|---|
-| UC-I | Kitchen Ticket Rendering & Print Broker | UC-E, UC-H | High |
-| UC-J | Cancellation & Void Workflows | UC-E, UC-G | High |
-| UC-K | Combo Component Routing | UC-E, UC-07 | Medium |
-| UC-L | Stock Deduction from Kitchen Orders | UC-E, UC-11 | Medium |
-| UC-M | Custom Kitchen Display Screen (OWL) | UC-H | Low |
-| UC-N | Sale Order to Kitchen Order Integration | UC-E | Medium |
-| UC-O | Accounting & Invoice from Kitchen | UC-E | Low |
+| UC-J | POS UI Badges (Frontend Consumption) | UC-I | High |
+| UC-K | Cancellation & Void Workflows | UC-E, UC-G | High |
+| UC-L | Manual Availability Refresh | UC-I | Medium |
+| UC-M | Combo Component Routing | UC-E, UC-07 | Medium |
+| UC-N | Stock Deduction from Kitchen Orders | UC-E, UC-11 | Medium |
+| UC-O | Custom Kitchen Display Screen (OWL) | UC-H | Low |
+| UC-P | Sale Order to Kitchen Order Integration | UC-E | Medium |
+| UC-Q | Accounting & Invoice from Kitchen | UC-E | Low |
 
 > **Note:** UC IDs are provisional. Confirm ordering and priority with user before starting each UC.
 
@@ -249,3 +280,5 @@ The following items are **intentionally out of scope** for all currently complet
 | No-Station Routing | Skip no-station items silently; mark `routing_status = no_station_required`; auto-ready the order if all items fall into this category. |
 | Odoo 18 `sync_from_ui` Payload | Flatten the JSON payload, strip the `data` wrapper, and map legacy properties (`uid` -> `uuid`, `statement_ids` -> `payment_ids`). |
 | Atomic Savepoints | Use `env.cr.savepoint()` wrapped in a `try/except` inside integration lifecycle hooks to seamlessly rollback dead/faulty physical integrations (like ticket prints) without breaking offline UI synchronization. |
+| Odoo 18 Session Injection | Extend Odoo 18 POS load payloads by intercepting `super().load_data()` on `pos.session` and mutating the returned dictionary map instead of defining ORM computed fields per model. |
+| Backend Crash Isolation | When injecting external datasets into critical boot paths (`load_data`), aggressively wrap all operations in `try/except Exception` blocks to guarantee the baseline Odoo dictionary reliably returns to the user regardless of custom backend logic crashes. |

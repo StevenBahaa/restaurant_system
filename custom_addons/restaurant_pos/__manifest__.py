@@ -32,6 +32,13 @@
         "security/ir.model.access.csv",
         "views/pos_config_views.xml",
     ],
+    "assets": {
+        "point_of_sale._assets_pos": [
+            "restaurant_pos/static/src/js/product_card.js",
+            "restaurant_pos/static/src/xml/product_card.xml",
+            "restaurant_pos/static/src/scss/product_card.scss",
+        ],
+    },
     "installable": True,
     "application": False,
     "auto_install": False,
