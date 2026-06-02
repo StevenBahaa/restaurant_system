@@ -204,3 +204,33 @@ class PosOrder(models.Model):
                 _logger.warning("Availability check failed for kitchen order %s: %s", new_order.name, e)
 
         return new_order
+
+    def _safe_create_restaurant_kitchen_order_from_pos(self, trigger=False):
+        for order in self:
+            try:
+                order._create_restaurant_kitchen_order_from_pos()
+            except Exception as e:
+                _logger.error(
+                    "Kitchen integration failed safely for POS Order %s (ID: %s, Trigger: %s). Error: %s",
+                    order.name,
+                    order.id,
+                    trigger,
+                    e,
+                    exc_info=True,
+                )
+
+    @api.model
+    def _process_order(self, order, existing_order):
+        order_id = super()._process_order(order, existing_order)
+        if order_id:
+            pos_order = self.browse(order_id)
+            if pos_order.exists() and pos_order._get_kitchen_send_policy() == "on_order_create":
+                pos_order._safe_create_restaurant_kitchen_order_from_pos(trigger="_process_order")
+        return order_id
+
+    def action_pos_order_paid(self):
+        res = super().action_pos_order_paid()
+        for order in self:
+            if order._get_kitchen_send_policy() == "on_payment_validation":
+                order._safe_create_restaurant_kitchen_order_from_pos(trigger="action_pos_order_paid")
+        return res
