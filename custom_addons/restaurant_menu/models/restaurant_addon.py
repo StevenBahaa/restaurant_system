@@ -64,6 +64,14 @@ class RestaurantAddonItem(models.Model):
     _name = "restaurant.addon.item"
     _description = "Restaurant Add-on Item"
 
+    _sql_constraints = [
+        (
+            "unique_product_per_group",
+            "UNIQUE(addon_group_id, product_tmpl_id)",
+            "This add-on product is already added to this add-on group."
+        )
+    ]
+
     product_tmpl_id = fields.Many2one(
         comodel_name="product.template",
         string="Add-on Product",
@@ -166,24 +174,20 @@ class RestaurantAddonItem(models.Model):
             if addon.additional_price < 0:
                 raise ValidationError("Additional price cannot be negative.")
 
-    @api.constrains("addon_group_id", "product_tmpl_id")
-    def _check_unique_product_per_group(self):
-        for item in self:
-            duplicate = self.search([
-                ("addon_group_id", "=", item.addon_group_id.id),
-                ("product_tmpl_id", "=", item.product_tmpl_id.id),
-                ("id", "!=", item.id),
-            ], limit=1)
 
-            if duplicate:
-                raise ValidationError(
-                    "This add-on product is already added to this add-on group."
-                )
 
 class RestaurantProductAddonGroup(models.Model):
     _name = "restaurant.product.addon.group"
     _description = "Restaurant Product Add-on Group"
     _order = "sequence, id"
+
+    _sql_constraints = [
+        (
+            "unique_group_per_product",
+            "UNIQUE(product_tmpl_id, addon_group_id)",
+            "This add-on group is already assigned to the menu item."
+        )
+    ]
 
     sequence = fields.Integer(
         default=10,
@@ -285,19 +289,7 @@ class RestaurantProductAddonGroup(models.Model):
                     "Optional add-on groups must have a minimum selection of zero."
                 )
 
-    @api.constrains("product_tmpl_id", "addon_group_id")
-    def _check_unique_group_per_product(self):
-        for record in self:
-            duplicate = self.search([
-                ("product_tmpl_id", "=", record.product_tmpl_id.id),
-                ("addon_group_id", "=", record.addon_group_id.id),
-                ("id", "!=", record.id),
-            ], limit=1)
 
-            if duplicate:
-                raise ValidationError(
-                    "This add-on group is already assigned to the menu item."
-                )
 
 class RestaurantAddonItemIngredient(models.Model):
     _name = "restaurant.addon.item.ingredient"
