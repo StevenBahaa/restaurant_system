@@ -47,6 +47,8 @@ This project builds a full Restaurant & Cloud Kitchen ERP on Odoo 18 Community, 
 | UC-G | POS Order to Kitchen Integration | `restaurant_pos_kitchen` | ✅ |
 | UC-H | Kitchen Auto Dispatch Policy | `restaurant_pos_kitchen` | ✅ |
 | UC-I | POS Availability Backend Loader | `restaurant_pos` | ✅ |
+| UC-J | POS UI Badges (Frontend Consumption) | `restaurant_pos` | ✅ |
+| UC-K | Cancellation & Void Workflows | `restaurant_pos_kitchen` | ✅ |
 
 ---
 
@@ -226,6 +228,66 @@ POS Order Sync (JS UI)
 
 ---
 
+## UC-J POS UI Badges (Frontend) — Detailed Summary
+
+**Approved Plan:** `docs/plans/UC-J_pos_availability_badges_plan.md`  
+**Verification Report:** `docs/tests/UC-J_pos_availability_badges_verification_report.md`  
+
+### Steps Completed
+
+| Step | Title | Status |
+|---|---|---|
+| Step 1 | Architecture Inspection & Plan | ✅ |
+| Step 2 | Add POS Asset Skeleton & Verify Asset Loading | ✅ |
+| Step 3 | XML Template Extension | ✅ |
+| Step 4 | JS Component Availability Logic | ✅ |
+| Step 5 | UI/UX Polish & SCSS | ✅ |
+| Step 6 | UI & Payload Deep Verification | ✅ |
+
+### Key Architecture Introduced
+
+- **Component Patching:** Extended Odoo 18's native `ProductCard` component dynamically using `@web/core/utils/patch` to inject reactive getters that consume the `pos.session` availability payload instantaneously without RPC overhead.
+- **Safe Template Inheritance:** Inherited `point_of_sale.ProductCard` via XML extension, utilizing a highly defensive `//article` XPath to safely bypass dynamic `t-attf-class` compile-time failures.
+- **Non-Blocking UI Design:** Constructed an absolutely positioned `.restaurant-pos-availability-badge` overlay that strictly enforces `pointer-events: none` to guarantee the cashier's touch targets remain fully intact.
+
+### Test Results
+
+| Test Suite | Coverage | Result |
+|---|---|---|
+| UI Logic Validation | Reason code mapping, fallback evaluations, and click protection | ✅ PASS |
+| End-to-End Payload Check | Verified explicit payload extraction handling for active and unmapped states (e.g., `schedule_unavailable`, `not_menu_item`) | ✅ PASS |
+
+---
+
+## UC-K Cancellation & Void Workflows — Detailed Summary
+
+**Approved Plan:** `docs/plans/UC-K_pos_refund_kitchen_cancellation_plan.md`  
+
+### Steps Completed
+
+| Step | Title | Status |
+|---|---|---|
+| Step 1 | Architecture Inspection & Plan | ✅ |
+| Step 2 | Add POS Refund Cancellation / Recall Metadata Fields and Backend Views | ✅ |
+| Step 3 | Implement Kitchen Cancellation / Recall Service Helper | ✅ |
+| Step 4 | Detect POS Refund Orders and Trigger Safe Kitchen Recall Service | ✅ |
+
+### Key Architecture Introduced
+
+- **Cross-Model Field Filtering:** Dynamically constructed field mappers using `target._fields` dict comprehensions to blindly, yet safely, funnel metadata strings from a POS scope into backend ticket models without crashing.
+- **Savepoint Action Wrappers:** Implemented a defensively nested `env.cr.savepoint()` around native `.action_cancel()` triggers. Caught native `Exception` rejections internally so we dynamically downgrade hard-cancellations to soft `recall_required` flags without throwing unhandled exceptions that break offline POS synchronization.
+- **Targeted Sudo Queries:** Safely resolved the backend kitchen order targets spanning independent branch boundaries using surgically precise `sudo().search()` wrappers strictly bound to finding the corresponding `source_res_id`.
+- **Payload Multi-Origin Filtering:** Extensively mapped `pos.order` refund loops so multi-order refunds structurally decouple their lines and only funnel correctly aligned product queries to specific back-of-house tickets.
+
+### Test Results
+
+| Test Suite | Coverage | Result |
+|---|---|---|
+| Shell Field Verification | Order filtering, exact `action_cancel()` gate states, duplicate repulsions, missing backend data | ✅ PASS |
+| Multi-Refund Boundary | Asserted that overlapping refund lines isolated per target order strictly retained their independent recall notes without mixing quantities. | ✅ PASS |
+
+---
+
 ## Known Limitations & Deferred Scope
 
 The following items are **intentionally out of scope** for all currently completed UCs. They are documented here for planning purposes:
@@ -247,8 +309,6 @@ The following items are **intentionally out of scope** for all currently complet
 
 | ID | Title | Depends On | Priority |
 |---|---|---|---|
-| UC-J | POS UI Badges (Frontend Consumption) | UC-I | High |
-| UC-K | Cancellation & Void Workflows | UC-E, UC-G | High |
 | UC-L | Manual Availability Refresh | UC-I | Medium |
 | UC-M | Combo Component Routing | UC-E, UC-07 | Medium |
 | UC-N | Stock Deduction from Kitchen Orders | UC-E, UC-11 | Medium |
@@ -282,3 +342,7 @@ The following items are **intentionally out of scope** for all currently complet
 | Atomic Savepoints | Use `env.cr.savepoint()` wrapped in a `try/except` inside integration lifecycle hooks to seamlessly rollback dead/faulty physical integrations (like ticket prints) without breaking offline UI synchronization. |
 | Odoo 18 Session Injection | Extend Odoo 18 POS load payloads by intercepting `super().load_data()` on `pos.session` and mutating the returned dictionary map instead of defining ORM computed fields per model. |
 | Backend Crash Isolation | When injecting external datasets into critical boot paths (`load_data`), aggressively wrap all operations in `try/except Exception` blocks to guarantee the baseline Odoo dictionary reliably returns to the user regardless of custom backend logic crashes. |
+| POS Refund Linkage | In Odoo 18, use `refunded_orderline_id` to reliably trace negative refund lines back to their original sale. |
+| Filtered Dict Updates | Filter external metadata keys via `{k: v for k, v in payload.items() if k in target._fields}` to bypass missing-field `ValueError` crashes. |
+| Targeted `sudo()` for Reads | Use `sudo().search()` strictly for read queries when bridging external contexts (e.g. cross-branch cashier refunds) to resolve backend tickets natively blocked by standard ACLs. |
+| Atomic Action Wrappers | Encapsulate native workflow hooks (`action_cancel()`) inside `env.cr.savepoint()` + `try/except Exception` to prevent internal state validations from rolling back earlier structural metadata commits. |

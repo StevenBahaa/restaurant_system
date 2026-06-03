@@ -11,6 +11,14 @@ class RestaurantKitchenOrder(models.Model):
         ondelete={"pos_order": "set default"},
     )
 
+    cancelled_from_pos_order_id = fields.Many2one("pos.order", string="Cancelled From POS Refund Order", readonly=True, copy=False, index=True)
+    cancellation_source = fields.Selection([("manual", "Manual"), ("pos_refund", "POS Refund")], string="Cancellation Source", readonly=True, copy=False)
+    cancellation_reason = fields.Text(string="Cancellation Reason", readonly=True, copy=False)
+    cancelled_at = fields.Datetime(string="Cancelled At", readonly=True, copy=False)
+    cancelled_by_id = fields.Many2one("res.users", string="Cancelled By", readonly=True, copy=False)
+    recall_required = fields.Boolean(string="Recall Required", readonly=True, copy=False)
+    recall_note = fields.Text(string="Recall Note", readonly=True, copy=False)
+
     @api.model
     def _find_existing_source_order(self, source_type, source_model, source_res_id):
         if not source_res_id:
@@ -125,4 +133,151 @@ class RestaurantKitchenOrder(models.Model):
                     "reason": str(e),
                 })
             results.append(result)
+        return results
+
+    def _build_recall_note(self, refund_pos_order, refund_lines=None):
+        lines_text = []
+        lines = refund_lines if refund_lines else refund_pos_order.lines
+        for line in lines:
+            lines_text.append(f"- {line.product_id.display_name}: {abs(line.qty)} refunded")
+            
+        pos_ref = refund_pos_order.pos_reference or refund_pos_order.name
+        note = f"POS Refund Order: {pos_ref}\n"
+        
+        if "refunded_order_id" in refund_pos_order._fields and refund_pos_order.refunded_order_id:
+            orig_ref = refund_pos_order.refunded_order_id.pos_reference or refund_pos_order.refunded_order_id.name
+            note += f"Original Order: {orig_ref}\n"
+            
+        if lines_text:
+            note += "Items affected:\n" + "\n".join(lines_text)
+        return note
+
+    def _apply_pos_refund_recall(self, refund_pos_order, refund_lines=None):
+        results = []
+        for order in self:
+            result = {
+                "kitchen_order_id": order.id,
+                "processed": False,
+                "reason_code": "unknown",
+                "reason": "Unknown state",
+                "tickets_updated": [],
+            }
+
+            pos_ref = refund_pos_order.pos_reference or refund_pos_order.name
+            if order.cancelled_from_pos_order_id == refund_pos_order or (order.recall_note and pos_ref in order.recall_note):
+                result.update({
+                    "reason_code": "already_processed",
+                    "reason": "Order already processed for this refund.",
+                })
+                results.append(result)
+                continue
+
+            if order.state == "cancelled":
+                result.update({
+                    "reason_code": "already_cancelled",
+                    "reason": "Order is already cancelled.",
+                })
+                results.append(result)
+                continue
+
+            note = self._build_recall_note(refund_pos_order, refund_lines)
+            metadata = {
+                'cancelled_from_pos_order_id': refund_pos_order.id,
+                'cancellation_source': 'pos_refund',
+                'cancellation_reason': note,
+                'cancelled_at': fields.Datetime.now(),
+                'cancelled_by_id': self.env.user.id,
+            }
+            order_metadata = {k: v for k, v in metadata.items() if k in order._fields}
+
+            if order.state == "draft":
+                order.write(order_metadata)
+                cancel_success = False
+                if hasattr(order, 'action_cancel'):
+                    try:
+                        with self.env.cr.savepoint():
+                            order.action_cancel()
+                            cancel_success = True
+                    except Exception as e:
+                        _logger.warning("Order action_cancel rejected for order %s: %s", order.id, e, exc_info=True)
+                        cancel_success = False
+                        
+                if cancel_success:
+                    result.update({
+                        "processed": True,
+                        "reason_code": "cancelled_draft",
+                        "reason": "Draft order cancelled.",
+                    })
+                else:
+                    result.update({
+                        "processed": True,
+                        "reason_code": "metadata_only_cancel_not_supported",
+                        "reason": "Draft order metadata written, but action_cancel not supported.",
+                    })
+                results.append(result)
+                continue
+
+            recall_metadata = metadata.copy()
+            recall_metadata.update({
+                'recall_required': True,
+                'recall_note': f"Review Required: {note}" if order.state == "ready" else note,
+            })
+            order_recall_metadata = {k: v for k, v in recall_metadata.items() if k in order._fields}
+            order.write(order_recall_metadata)
+
+            tickets_updated = []
+            for ticket in order.ticket_ids:
+                if ticket.state == "cancelled":
+                    continue
+                
+                ticket_metadata = {k: v for k, v in recall_metadata.items() if k in ticket._fields}
+                
+                if ticket.state == "waiting":
+                    ticket.write(ticket_metadata)
+                    if hasattr(ticket, 'action_cancel'):
+                        try:
+                            with self.env.cr.savepoint():
+                                ticket.action_cancel()
+                        except Exception as e:
+                            _logger.warning("Ticket action_cancel rejected for ticket %s: %s", ticket.id, e, exc_info=True)
+                            # Fallback to just metadata applied
+                            pass
+                    tickets_updated.append(ticket.id)
+                elif ticket.state in ("in_progress", "ready"):
+                    ticket.write(ticket_metadata)
+                    tickets_updated.append(ticket.id)
+
+            result.update({
+                "processed": True,
+                "reason_code": "recall_flagged",
+                "reason": "Order flagged for recall.",
+                "tickets_updated": tickets_updated,
+            })
+            results.append(result)
+
+        return results
+
+    def _safe_apply_pos_refund_recall(self, refund_pos_order, refund_lines=None, trigger=False):
+        results = []
+        for order in self:
+            try:
+                with self.env.cr.savepoint():
+                    res = order._apply_pos_refund_recall(refund_pos_order, refund_lines)
+                    results.extend(res)
+            except Exception as e:
+                _logger.error(
+                    "Kitchen refund recall failed safely for POS Order %s (Kitchen Order ID: %s, Trigger: %s). Error: %s",
+                    refund_pos_order.name,
+                    order.id,
+                    trigger,
+                    e,
+                    exc_info=True,
+                )
+                results.append({
+                    "kitchen_order_id": order.id,
+                    "processed": False,
+                    "reason_code": "exception",
+                    "reason": str(e),
+                    "tickets_updated": [],
+                })
         return results
