@@ -30,7 +30,7 @@
                                 <list>
                                     <field name="product_tmpl_id" readonly="used_in_operations" />
                                     <field name="additional_price" readonly="used_in_operations" />
-                                    <field name="addon_cost" readonly="1" />
+                                    <field name="addon_cost" readonly="1" groups="restaurant_base.group_restaurant_operations_manager" />
                                     <field name="max_quantity" readonly="used_in_operations" />
                                     <field name="kitchen_note" readonly="used_in_operations" />
                                     <field name="active" />
@@ -43,7 +43,7 @@
                                             <group>
                                                 <field name="product_tmpl_id" />
                                                 <field name="additional_price" />
-                                                <field name="addon_cost" readonly="1" />
+                                                <field name="addon_cost" readonly="1" groups="restaurant_base.group_restaurant_operations_manager" />
                                             </group>
 
                                             <group>
@@ -55,7 +55,7 @@
                                         </group>
 
                                         <notebook>
-                                            <page string="Ingredient Consumption">
+                                            <page string="Ingredient Consumption" groups="restaurant_base.group_restaurant_operations_manager">
                                                 <field name="ingredient_line_ids"
                                                     readonly="used_in_operations">
                                                     <list editable="bottom">

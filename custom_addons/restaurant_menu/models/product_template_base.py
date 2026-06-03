@@ -42,6 +42,68 @@ class ProductTemplate(models.Model):
         string="Schedule Rules",
     )
 
+    def _get_pos_addon_payload_bulk(self):
+        """
+        Returns a POS-safe payload of active add-on configurations for the current recordset.
+        Explicitly excludes all cost, ingredient, stock, and accounting internals.
+
+        Returns:
+            dict: {product_tmpl_id: [group_payload, ...]}
+        """
+        payload = {product.id: [] for product in self}
+
+        if not self:
+            return payload
+
+        ProductAddonGroup = self.env["restaurant.product.addon.group"]
+
+        domain = [
+            ("product_tmpl_id", "in", self.ids),
+            ("active", "=", True),
+            ("addon_group_id.active", "=", True),
+        ]
+
+        product_groups = ProductAddonGroup.search(
+            domain,
+            order="product_tmpl_id, sequence, id",
+        )
+
+        for p_group in product_groups:
+            active_items = p_group.addon_group_id.addon_item_ids.filtered(
+                lambda item: item.active
+            ).sorted(
+                key=lambda item: (item.product_tmpl_id.display_name or "", item.id)
+            )
+
+            if not active_items:
+                continue
+
+            items_payload = []
+            for item in active_items:
+                items_payload.append({
+                    "addon_item_id": item.id,
+                    "product_tmpl_id": item.product_tmpl_id.id,
+                    "display_name": item.product_tmpl_id.display_name,
+                    "additional_price": item.additional_price,
+                    "max_quantity": item.max_quantity,
+                    "kitchen_note": item.kitchen_note or "",
+                })
+
+            group_payload = {
+                "product_addon_group_id": p_group.id,
+                "sequence": p_group.sequence,
+                "addon_group_id": p_group.addon_group_id.id,
+                "addon_group_name": p_group.addon_group_id.name,
+                "required": p_group.required,
+                "min_selection": p_group.min_selection,
+                "max_selection": p_group.max_selection,
+                "items": items_payload,
+            }
+
+            payload[p_group.product_tmpl_id.id].append(group_payload)
+
+        return payload
+
     @api.onchange("restaurant_product_type")
     def _onchange_restaurant_product_type(self):
         for product in self:

@@ -117,6 +117,7 @@ class RestaurantAddonItem(models.Model):
         comodel_name="restaurant.addon.item.ingredient",
         inverse_name="addon_item_id",
         string="Ingredient Consumption",
+        groups="restaurant_base.group_restaurant_operations_manager",
     )   
 
     addon_cost = fields.Float(
@@ -124,6 +125,7 @@ class RestaurantAddonItem(models.Model):
         compute="_compute_addon_cost",
         store=True,
         readonly=True,
+        groups="restaurant_base.group_restaurant_operations_manager",
     )
 
     used_in_operations = fields.Boolean(
@@ -315,17 +317,20 @@ class RestaurantAddonItemIngredient(models.Model):
         string="Quantity",
         required=True,
         default=1.0,
+        groups="restaurant_base.group_restaurant_operations_manager",
     )
 
     uom_id = fields.Many2one(
         comodel_name="uom.uom",
         string="Unit of Measure",
         required=True,
+        groups="restaurant_base.group_restaurant_operations_manager",
     )
 
     wastage_percent = fields.Float(
         string="Wastage %",
         default=0.0,
+        groups="restaurant_base.group_restaurant_operations_manager",
     )
 
     actual_quantity = fields.Float(
@@ -333,6 +338,7 @@ class RestaurantAddonItemIngredient(models.Model):
         compute="_compute_actual_quantity",
         store=True,
         readonly=True,
+        groups="restaurant_base.group_restaurant_operations_manager",
     )
 
     ingredient_cost = fields.Float(
@@ -340,6 +346,7 @@ class RestaurantAddonItemIngredient(models.Model):
         compute="_compute_ingredient_cost",
         store=True,
         readonly=True,
+        groups="restaurant_base.group_restaurant_operations_manager",
     )
 
     line_cost = fields.Float(
@@ -347,6 +354,7 @@ class RestaurantAddonItemIngredient(models.Model):
         compute="_compute_line_cost",
         store=True,
         readonly=True,
+        groups="restaurant_base.group_restaurant_operations_manager",
     )   
 
     @api.depends("ingredient_product_id")
