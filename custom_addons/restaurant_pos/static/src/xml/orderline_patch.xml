@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-inherit="point_of_sale.Orderline" t-inherit-mode="extension">
+        <xpath expr="//ul[hasclass('info-list')]" position="inside">
+            <t t-if="line.restaurant_selected_addons and line.restaurant_selected_addons.length > 0">
+                <div class="addon-note-container d-flex flex-wrap gap-1 mt-1">
+                    <t t-foreach="line.restaurant_selected_addons" t-as="addon" t-key="addon.addon_item_id">
+                        <li class="addon-note badge p-1 rounded bg-secondary text-white bg-opacity-75" style="font-size: 0.8rem;">
+                            <i class="fa fa-plus me-1"/> 
+                            <t t-esc="addon.display_name"/>
+                            <t t-if="addon.qty > 1"> (x<t t-esc="addon.qty"/>)</t>
+                            <t t-if="addon.formatted_price">
+                                [+<t t-esc="addon.formatted_price"/>]
+                            </t>
+                        </li>
+                    </t>
+                </div>
+            </t>
+        </xpath>
+    </t>
+</templates>
