@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="restaurant_pos.RestaurantAddonPopup">
+        <Dialog title.translate="Configure Add-ons">
+            <t t-if="props.product">
+                <ProductInfoBanner product="props.product" />
+            </t>
+            
+            <div class="restaurant-addon-popup-content p-3">
+                <t t-if="!props.addonGroups or props.addonGroups.length === 0">
+                    <div class="alert alert-info m-0">No add-ons available for this item.</div>
+                </t>
+                <t t-else="">
+                    <t t-foreach="props.addonGroups" t-as="group" t-key="group.addon_group_id">
+                        <div class="addon-group-container mb-4">
+                            <!-- Group Header -->
+                            <div class="addon-group-header d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                <h4 class="m-0 fw-bold">
+                                    <t t-esc="group.addon_group_name"/>
+                                    <t t-if="group.required">
+                                        <span class="badge text-bg-danger ms-2 fs-6">Required</span>
+                                    </t>
+                                </h4>
+                                <small class="text-muted fw-semibold">
+                                    <t t-if="group.min_selection > 0 or group.max_selection > 0">
+                                        <t t-if="group.min_selection > 0">Min: <t t-esc="group.min_selection"/> </t>
+                                        <t t-if="group.min_selection > 0 and group.max_selection > 0"> | </t>
+                                        <t t-if="group.max_selection > 0">Max: <t t-esc="group.max_selection"/></t>
+                                    </t>
+                                </small>
+                            </div>
+                            
+                            <!-- Group Items -->
+                            <div class="addon-items row g-2">
+                                <t t-foreach="group.items" t-as="item" t-key="item.addon_item_id">
+                                    <div class="col-12 col-md-6">
+                                        <div class="addon-item-card border rounded p-2 d-flex justify-content-between align-items-center"
+                                             t-att-class="{'border-primary bg-primary-light': state.selections[item.addon_item_id] > 0, 'opacity-50': !canAdd(group, item) and state.selections[item.addon_item_id] == 0}">
+                                            
+                                            <div class="addon-item-info flex-grow-1" style="cursor: pointer;"
+                                                 t-on-click="onItemClick"
+                                                 t-att-data-group-id="group.addon_group_id"
+                                                 t-att-data-item-id="item.addon_item_id">
+                                                <div class="fw-semibold fs-5"><t t-esc="item.display_name"/></div>
+                                                <div t-if="item.kitchen_note" class="text-muted small">
+                                                    <i class="fa fa-cutlery me-1"></i><t t-esc="item.kitchen_note"/>
+                                                </div>
+                                                <div t-if="item.additional_price > 0" class="text-success small fw-bold mt-1">
+                                                    + <t t-esc="env.utils.formatCurrency(item.additional_price)"/>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Item Controls -->
+                                            <div class="addon-item-controls ms-2 d-flex align-items-center">
+                                                <t t-if="item.max_quantity > 1">
+                                                    <button class="btn btn-outline-secondary btn-sm" 
+                                                            t-on-click.stop="onDecreaseItem"
+                                                            t-att-data-group-id="group.addon_group_id"
+                                                            t-att-data-item-id="item.addon_item_id"
+                                                            t-att-class="{'disabled': !canRemove(item)}">
+                                                        <i class="fa fa-minus"></i>
+                                                    </button>
+                                                    <span class="mx-2 fw-bold fs-5" style="min-width: 20px; text-align: center;">
+                                                        <t t-esc="state.selections[item.addon_item_id]"/>
+                                                    </span>
+                                                    <button class="btn btn-outline-primary btn-sm" 
+                                                            t-on-click.stop="onIncreaseItem"
+                                                            t-att-data-group-id="group.addon_group_id"
+                                                            t-att-data-item-id="item.addon_item_id"
+                                                            t-att-class="{'disabled': !canAdd(group, item)}">
+                                                        <i class="fa fa-plus"></i>
+                                                    </button>
+                                                </t>
+                                                <!-- Switch for max = 1 -->
+                                                <t t-else="">
+                                                    <div class="form-check form-switch fs-3 m-0">
+                                                        <input class="form-check-input" type="checkbox" role="switch"
+                                                               t-att-checked="state.selections[item.addon_item_id] > 0"
+                                                               t-att-disabled="!canAdd(group, item) and state.selections[item.addon_item_id] == 0"
+                                                               t-on-change.stop="onToggleItem"
+                                                               t-att-data-group-id="group.addon_group_id"
+                                                               t-att-data-item-id="item.addon_item_id"/>
+                                                    </div>
+                                                </t>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+            </div>
+            
+            <t t-set-slot="footer">
+                <button class="btn btn-primary btn-lg lh-lg o-default-button"
+                        t-att-class="{'disabled': !isValid()}"
+                        t-on-click="confirm">
+                    Confirm
+                </button>
+                <button class="btn btn-secondary btn-lg lh-lg o-default-button" 
+                        t-on-click="props.close">
+                    Discard
+                </button>
+            </t>
+        </Dialog>
+    </t>
+</templates>
