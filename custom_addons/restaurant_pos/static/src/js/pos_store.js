@@ -17,6 +17,12 @@ patch(PosStore.prototype, {
     setRestaurantAvailabilityMap(newMap) {
         this.restaurant_availability_map = { ...(newMap || {}) };
     },
+
+    _getRestaurantAvailabilityForProduct(product) {
+        const availabilityMap = this.restaurant_availability_map || this.session?._restaurant_availability_map || this.session?.raw?._restaurant_availability_map || {};
+        const productId = product?.id;
+        return productId ? availabilityMap[productId] || availabilityMap[String(productId)] : undefined;
+    },
     async addLineToOrder(vals, order, opts = {}, configure = true) {
         let product = vals.product_id;
         if (typeof product === "number") {
@@ -29,7 +35,7 @@ patch(PosStore.prototype, {
         if (configure && product) {
             const tmplId = product.raw ? product.raw.product_tmpl_id : product.product_tmpl_id;
             
-            const availability = this.restaurant_availability_map[tmplId];
+            const availability = this._getRestaurantAvailabilityForProduct(product);
             if (availability && availability.is_available === false) {
                 const reason = availability.reason || _t("This product is currently unavailable.");
                 const blockSale = this.config.restaurant_block_unavailable_products;
