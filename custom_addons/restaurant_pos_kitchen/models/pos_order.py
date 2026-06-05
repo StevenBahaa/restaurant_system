@@ -120,8 +120,42 @@ class PosOrder(models.Model):
         }
         if "note" in line_fields:
             source_note = getattr(pos_line, "customer_note", False) or getattr(pos_line, "note", False)
+            
+            addon_notes = []
+            if hasattr(pos_line, 'restaurant_addon_details') and pos_line.restaurant_addon_details:
+                for addon in pos_line.restaurant_addon_details:
+                    if isinstance(addon, dict):
+                        qty_val = addon.get('qty', 1)
+                        import math
+                        try:
+                            qty_float = float(qty_val)
+                            if not math.isfinite(qty_float) or qty_float <= 0:
+                                qty_display = 1
+                            else:
+                                qty_display = int(qty_float) if qty_float == int(qty_float) else qty_float
+                        except (TypeError, ValueError, OverflowError):
+                            qty_display = 1
+
+                        qty_str = f" x{qty_display}"
+                        
+                        name_str = addon.get('display_name', 'Unknown Add-on')
+                        kitchen_note = addon.get('kitchen_note', '')
+                        
+                        addon_str = f"- {name_str}{qty_str}"
+                        if kitchen_note:
+                            addon_str += f" \u2014 {kitchen_note}"
+                        addon_notes.append(addon_str)
+            
+            final_note_parts = []
             if source_note:
-                vals["note"] = source_note
+                final_note_parts.append(str(source_note))
+            if addon_notes:
+                final_note_parts.append("Add-ons:")
+                final_note_parts.extend(addon_notes)
+                
+            if final_note_parts:
+                vals["note"] = "\n".join(final_note_parts)
+                
         return vals
 
     def _prepare_restaurant_kitchen_order_vals(self, branch, kitchen_lines_vals):

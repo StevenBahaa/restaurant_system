@@ -253,6 +253,7 @@ class RestaurantKitchenOrder(models.Model):
                             'quantity': line.quantity,
                             'expected_prep_time': s_line.expected_prep_time or line.expected_prep_time,
                             'sequence': s_line.sequence,
+                            'note': line.note,
                         })
                     
                     line.write({

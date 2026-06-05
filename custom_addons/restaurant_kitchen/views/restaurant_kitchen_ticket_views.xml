@@ -83,6 +83,7 @@
                                     <field name="sequence" widget="handle"/>
                                     <field name="product_tmpl_id"/>
                                     <field name="quantity"/>
+                                    <field name="note" optional="show"/>
                                     <field name="state" widget="badge" decoration-info="state == 'waiting'" decoration-warning="state == 'in_progress'" decoration-success="state == 'ready'" decoration-muted="state == 'cancelled'"/>
                                     <field name="expected_prep_time"/>
                                 </list>
