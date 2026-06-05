@@ -49,6 +49,8 @@ This project builds a full Restaurant & Cloud Kitchen ERP on Odoo 18 Community, 
 | UC-I | POS Availability Backend Loader | `restaurant_pos` | ✅ |
 | UC-J | POS UI Badges (Frontend Consumption) | `restaurant_pos` | ✅ |
 | UC-K | Cancellation & Void Workflows | `restaurant_pos_kitchen` | ✅ |
+| UC-L | POS Add-ons Selection UI | `restaurant_pos` | ✅ |
+| UC-M | POS Availability Manual Refresh | `restaurant_pos` | ✅ |
 
 ---
 
@@ -288,6 +290,53 @@ POS Order Sync (JS UI)
 
 ---
 
+## UC-L POS Add-ons Selection UI — Detailed Summary
+
+**Approved Plan:** `docs/plans/UC-L_pos_addons_selection_ui_plan.md`  
+**Final QA Report:** `docs/tests/UC-L_pos_addons_selection_ui_final_report.md`  
+
+### Steps Completed
+
+| Step | Title | Status |
+|---|---|---|
+| Step 1 | Architecture Plan | ✅ |
+| Step 2 | Backend Add-on Map Loader | ✅ |
+| Step 3 | OWL POS Popup Component | ✅ |
+| Step 4 | Add-to-Cart Override | ✅ |
+| Step 5 | Backend `pos.order.line` Persistence | ✅ |
+| Step 6 | Kitchen Note Bridge | ✅ |
+
+### Key Architecture Introduced
+
+- **Backend Loader:** Hooked `_restaurant_addon_map` into `pos.session.load_data()`.
+- **OWL Reactivity:** Built `RestaurantAddonPopup` utilizing `makeAwaitable` dialogue overlays to intercept the `addLineToOrder` flow seamlessly.
+- **Orderline Props:** Injected dynamic pricing increments natively into `price_extra` and tracked add-ons via `restaurant_selected_addons`.
+- **Backend Persistence:** Safely serialized JSON add-on arrays into `restaurant_addon_text` within `pos.order.line`.
+- **Kitchen Bridge:** Plumbed the generated string automatically into `restaurant.kitchen.ticket.line.note` for chefs.
+
+---
+
+## UC-M POS Availability Manual Refresh — Detailed Summary
+
+**Final QA Report:** `docs/tests/UC-M_pos_availability_manual_refresh_final_report.md`  
+
+### Steps Completed
+
+| Step | Title | Status |
+|---|---|---|
+| Step 1 | Architecture Inspection & Plan | ✅ |
+| Step 2 | Backend Availability Refresh Method | ✅ |
+| Step 3 | Reactive Availability State Migration | ✅ |
+| Step 4 | Refresh Control Button & ORM Call | ✅ |
+
+### Key Architecture Introduced
+
+- **Backend Refresh RPC:** Created `action_refresh_restaurant_availability()` on `pos.session` returning the exact `load_data` payload.
+- **Store Reactivity Migration:** Appended `this.restaurant_availability_map` directly onto the `PosStore` reactive proxy during `setup()`, decoupling badges from static session states.
+- **Context-Safe UI Hooks:** Overrode `ControlButtons` and utilized `this.env.services.notification` to strictly prevent `undefined` scope crashes in OWL async patches.
+
+---
+
 ## Known Limitations & Deferred Scope
 
 The following items are **intentionally out of scope** for all currently completed UCs. They are documented here for planning purposes:
@@ -309,12 +358,11 @@ The following items are **intentionally out of scope** for all currently complet
 
 | ID | Title | Depends On | Priority |
 |---|---|---|---|
-| UC-L | Manual Availability Refresh | UC-I | Medium |
-| UC-M | Combo Component Routing | UC-E, UC-07 | Medium |
-| UC-N | Stock Deduction from Kitchen Orders | UC-E, UC-11 | Medium |
-| UC-O | Custom Kitchen Display Screen (OWL) | UC-H | Low |
-| UC-P | Sale Order to Kitchen Order Integration | UC-E | Medium |
-| UC-Q | Accounting & Invoice from Kitchen | UC-E | Low |
+| UC-N | Combo Component Routing | UC-E, UC-07 | Medium |
+| UC-O | Stock Deduction from Kitchen Orders | UC-E, UC-11 | Medium |
+| UC-P | Custom Kitchen Display Screen (OWL) | UC-H | Low |
+| UC-Q | Sale Order to Kitchen Order Integration | UC-E | Medium |
+| UC-R | Accounting & Invoice from Kitchen | UC-E | Low |
 
 > **Note:** UC IDs are provisional. Confirm ordering and priority with user before starting each UC.
 
