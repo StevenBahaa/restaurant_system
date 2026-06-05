@@ -12,6 +12,12 @@ class PosConfig(models.Model):
         help="Restaurant branch served by this POS configuration. Used for branch-aware product availability and future kitchen integration.",
     )
 
+    restaurant_block_unavailable_products = fields.Boolean(
+        string="Block Unavailable Products",
+        default=False,
+        help="If enabled, unavailable or unscheduled products cannot be added to the POS cart. If disabled, cashiers will only receive a warning and may continue."
+    )
+
     @api.constrains('branch_id', 'company_id')
     def _check_branch_company(self):
         for config in self:

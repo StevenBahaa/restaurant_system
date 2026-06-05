@@ -8,6 +8,7 @@
             <xpath expr="//div[@id='title']" position="after">
                 <group name="restaurant_branch_group" string="Restaurant" invisible="context.get('pos_config_create_mode', False)">
                     <field name="branch_id" options="{'no_create': True}" readonly="has_active_session"/>
+                    <field name="restaurant_block_unavailable_products"/>
                 </group>
             </xpath>
         </field>
