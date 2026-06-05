@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="restaurant_pos.RestaurantAvailabilityDialog">
+        <Dialog title="title">
+            <div class="restaurant-availability-dialog-body">
+                <div class="availability-header" t-att-class="isBlock ? 'block-mode' : 'warning-mode'">
+                    <i t-att-class="isBlock ? 'fa fa-ban' : 'fa fa-exclamation-triangle'"></i>
+                    <h4 t-esc="productName" />
+                    <span class="badge rounded-pill ms-2" t-att-class="isBlock ? 'text-bg-danger' : 'text-bg-warning'" t-esc="reasonLabel" />
+                </div>
+                
+                <div class="availability-reason mt-3">
+                    <p class="mb-1 fw-bold text-dark" t-esc="reasonText" />
+                    <small t-if="checkedAt" class="text-muted"><t t-esc="'Last checked: ' + checkedAt" /></small>
+                </div>
+                
+                <div class="availability-context mt-3">
+                    <t t-if="isBlock">
+                        <p class="text-danger mb-0"><i class="fa fa-lock"></i> Current POS policy blocks the addition of this product.</p>
+                    </t>
+                    <t t-else="">
+                        <p class="text-warning-emphasis mb-0"><i class="fa fa-info-circle"></i> Are you sure you want to proceed despite the warning?</p>
+                    </t>
+                </div>
+            </div>
+            
+            <t t-set-slot="footer">
+                <t t-if="isWarning">
+                    <button class="btn btn-warning" t-on-click="confirm">
+                        Continue Anyway
+                    </button>
+                    <button class="btn btn-secondary" t-on-click="cancel">
+                        Cancel
+                    </button>
+                </t>
+                <t t-if="isBlock">
+                    <button class="btn btn-primary" t-on-click="cancel">
+                        OK
+                    </button>
+                </t>
+            </t>
+        </Dialog>
+    </t>
+</templates>

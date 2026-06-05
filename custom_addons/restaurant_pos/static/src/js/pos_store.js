@@ -5,7 +5,7 @@ import { PosStore } from "@point_of_sale/app/store/pos_store";
 import { RestaurantAddonPopup } from "./restaurant_addon_popup";
 import { makeAwaitable } from "@point_of_sale/app/store/make_awaitable_dialog";
 import { _t } from "@web/core/l10n/translation";
-import { AlertDialog, ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { RestaurantAvailabilityDialog } from "./restaurant_availability_dialog";
 
 patch(PosStore.prototype, {
     setup() {
@@ -37,28 +37,17 @@ patch(PosStore.prototype, {
             
             const availability = this._getRestaurantAvailabilityForProduct(product);
             if (availability && availability.is_available === false) {
-                const reason = availability.reason || _t("This product is currently unavailable.");
                 const blockSale = this.config.restaurant_block_unavailable_products;
+                const mode = blockSale ? 'block' : 'warning';
 
-                if (blockSale) {
-                    this.dialog.add(AlertDialog, {
-                        title: _t("Cannot Add Product"),
-                        body: _t("%s cannot be added: %s", product.display_name, reason),
-                    });
+                const isConfirmed = await makeAwaitable(this.dialog, RestaurantAvailabilityDialog, {
+                    product: product,
+                    availability: availability,
+                    mode: mode
+                });
+
+                if (!isConfirmed) {
                     return;
-                } else {
-                    const isConfirmed = await new Promise((resolve) => {
-                        this.dialog.add(ConfirmationDialog, {
-                            title: _t("Product Unavailable"),
-                            body: _t("%s is marked as unavailable: %s. Do you want to continue adding it?", product.display_name, reason),
-                            confirm: () => resolve(true),
-                            cancel: () => resolve(false),
-                            close: () => resolve(false),
-                        });
-                    });
-                    if (!isConfirmed) {
-                        return;
-                    }
                 }
             }
 
