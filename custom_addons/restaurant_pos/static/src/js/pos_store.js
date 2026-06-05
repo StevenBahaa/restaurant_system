@@ -4,6 +4,8 @@ import { patch } from "@web/core/utils/patch";
 import { PosStore } from "@point_of_sale/app/store/pos_store";
 import { RestaurantAddonPopup } from "./restaurant_addon_popup";
 import { makeAwaitable } from "@point_of_sale/app/store/make_awaitable_dialog";
+import { _t } from "@web/core/l10n/translation";
+import { AlertDialog, ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 
 patch(PosStore.prototype, {
     setup() {
@@ -26,6 +28,34 @@ patch(PosStore.prototype, {
 
         if (configure && product) {
             const tmplId = product.raw ? product.raw.product_tmpl_id : product.product_tmpl_id;
+            
+            const availability = this.restaurant_availability_map[tmplId];
+            if (availability && availability.is_available === false) {
+                const reason = availability.reason || _t("This product is currently unavailable.");
+                const blockSale = this.config.restaurant_block_unavailable_products;
+
+                if (blockSale) {
+                    this.dialog.add(AlertDialog, {
+                        title: _t("Cannot Add Product"),
+                        body: _t("%s cannot be added: %s", product.display_name, reason),
+                    });
+                    return;
+                } else {
+                    const isConfirmed = await new Promise((resolve) => {
+                        this.dialog.add(ConfirmationDialog, {
+                            title: _t("Product Unavailable"),
+                            body: _t("%s is marked as unavailable: %s. Do you want to continue adding it?", product.display_name, reason),
+                            confirm: () => resolve(true),
+                            cancel: () => resolve(false),
+                            close: () => resolve(false),
+                        });
+                    });
+                    if (!isConfirmed) {
+                        return;
+                    }
+                }
+            }
+
             const session = this.session;
             const addonMap = session && (session._restaurant_addon_map || (session.raw && session.raw._restaurant_addon_map) || {});
 
