@@ -29,29 +29,47 @@ class PosSession(models.Model):
                 branch = self.config_id._get_restaurant_branch()
             elif hasattr(self.config_id, 'branch_id'):
                 branch = self.config_id.branch_id
-            
+                
+        except Exception:
+            _logger.error("restaurant_pos: Initialization crash in load_data. Aborting map injections.", exc_info=True)
+            return response
+
+        # 1. Independent Availability Block
+        try:
             _logger.info(
                 "restaurant_pos: Evaluating availability for %d POS products on Branch ID: %s (Session ID: %s)", 
                 len(products), 
                 branch.id if branch else 'None', 
                 self.id
             )
-            
-            # Build availability payload map natively leveraging UC-I Step 2
             availability_map = {}
             if products:
                 availability_map = products._get_pos_availability_payload_bulk(
                     branch=branch,
                     quantity=1,
                 )
-            
-            # Safely inject directly into the target serialization hook
             session_data_bucket[0]["_restaurant_availability_map"] = availability_map
-            
         except Exception:
             _logger.error(
-                "restaurant_pos: Critical injection crash inside POS load_data. Original response returned unchanged.", 
+                "restaurant_pos: Failed to build _restaurant_availability_map for Session ID: %s. Continuing with empty map.",
+                self.id,
                 exc_info=True
             )
+            session_data_bucket[0]["_restaurant_availability_map"] = {}
+
+        # 2. Independent Add-on Block
+        try:
+            addon_map = {}
+            if products:
+                product_templates = products.mapped('product_tmpl_id')
+                addon_map = product_templates._get_pos_addon_payload_bulk()
+            session_data_bucket[0]["_restaurant_addon_map"] = addon_map
+        except Exception:
+            _logger.error(
+                "restaurant_pos: Failed to build _restaurant_addon_map for Session ID: %s. Continuing with empty map.",
+                self.id,
+                exc_info=True
+            )
+            session_data_bucket[0]["_restaurant_addon_map"] = {}
         
         return response
