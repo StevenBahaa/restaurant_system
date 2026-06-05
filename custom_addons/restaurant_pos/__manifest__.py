@@ -44,6 +44,8 @@
             "restaurant_pos/static/src/js/pos_store.js",
             "restaurant_pos/static/src/js/pos_order_line.js",
             "restaurant_pos/static/src/xml/orderline_patch.xml",
+            "restaurant_pos/static/src/js/control_buttons_patch.js",
+            "restaurant_pos/static/src/xml/control_buttons_patch.xml",
         ],
     },
     "installable": True,

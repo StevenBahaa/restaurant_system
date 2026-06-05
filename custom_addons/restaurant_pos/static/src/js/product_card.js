@@ -5,8 +5,14 @@ import { patch } from "@web/core/utils/patch";
 
 patch(ProductCard.prototype, {
     get restaurantAvailability() {
-        if (!this.env.services.pos || !this.env.services.pos.session) return null;
-        const map = this.env.services.pos.session._restaurant_availability_map;
+        if (!this.env.services.pos) return null;
+        
+        // Prefer the reactive store map, fallback to session
+        let map = this.env.services.pos.restaurant_availability_map;
+        if (!map && this.env.services.pos.session) {
+            map = this.env.services.pos.session._restaurant_availability_map || 
+                  (this.env.services.pos.session.raw && this.env.services.pos.session.raw._restaurant_availability_map);
+        }
         if (!map) return null;
         
         const productId = this.props.productId || (this.props.product && this.props.product.id);

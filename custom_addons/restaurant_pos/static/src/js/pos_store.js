@@ -6,6 +6,15 @@ import { RestaurantAddonPopup } from "./restaurant_addon_popup";
 import { makeAwaitable } from "@point_of_sale/app/store/make_awaitable_dialog";
 
 patch(PosStore.prototype, {
+    setup() {
+        super.setup(...arguments);
+        const sessionMap = this.session && (this.session._restaurant_availability_map || (this.session.raw && this.session.raw._restaurant_availability_map));
+        this.restaurant_availability_map = { ...(sessionMap || {}) };
+    },
+
+    setRestaurantAvailabilityMap(newMap) {
+        this.restaurant_availability_map = { ...(newMap || {}) };
+    },
     async addLineToOrder(vals, order, opts = {}, configure = true) {
         let product = vals.product_id;
         if (typeof product === "number") {

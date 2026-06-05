@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-inherit="point_of_sale.ControlButtons" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('control-buttons-modal')]" position="inside">
+            <button class="btn btn-secondary btn-lg py-5" t-on-click="() => this.clickRefreshAvailability()" t-att-disabled="availabilityState and availabilityState.isRefreshing">
+                <i class="fa fa-refresh me-1" t-att-class="{'fa-spin': availabilityState and availabilityState.isRefreshing}" role="img" aria-label="Refresh Availability" title="Refresh Availability" />
+                Refresh Availability
+            </button>
+        </xpath>
+    </t>
+</templates>
