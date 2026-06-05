@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_pos_form_restaurant" model="ir.ui.view">
+        <field name="name">pos.order.form.restaurant</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='lines']/list/field[@name='price_subtotal_incl']" position="after">
+                <field name="restaurant_addon_details" optional="hide" readonly="1" string="Add-ons"/>
+            </xpath>
+            <xpath expr="//field[@name='lines']/form//field[@name='notice']" position="after">
+                <field name="restaurant_addon_details" readonly="1" string="Selected Add-ons"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

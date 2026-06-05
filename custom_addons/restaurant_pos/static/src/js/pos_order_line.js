@@ -22,6 +22,14 @@ patch(PosOrderline.prototype, {
         return super.can_be_merged_with(orderline);
     },
 
+    serialize() {
+        const res = super.serialize(...arguments);
+        if (this.restaurant_selected_addons && this.restaurant_selected_addons.length > 0) {
+            res.restaurant_addon_details = this.restaurant_selected_addons;
+        }
+        return res;
+    },
+
     getDisplayData() {
         const data = super.getDisplayData();
         data.restaurant_selected_addons = (this.restaurant_selected_addons || []).map(addon => {
