@@ -73,3 +73,47 @@ class PosSession(models.Model):
             session_data_bucket[0]["_restaurant_addon_map"] = {}
         
         return response
+
+    def action_refresh_restaurant_availability(self):
+        self.ensure_one()
+        try:
+            branch = False
+            if hasattr(self.config_id, '_get_restaurant_branch'):
+                branch = self.config_id._get_restaurant_branch()
+            elif hasattr(self.config_id, 'branch_id'):
+                branch = self.config_id.branch_id
+
+            # Safe standard POS product fetch
+            domain = [('available_in_pos', '=', True)]
+            if (
+                hasattr(self.config_id, "limit_categories")
+                and hasattr(self.config_id, "iface_available_categ_ids")
+                and self.config_id.limit_categories
+                and self.config_id.iface_available_categ_ids
+            ):
+                domain.append(("pos_categ_ids", "in", self.config_id.iface_available_categ_ids.ids))
+            
+            products = self.env['product.product'].search(domain)
+            
+            if not products:
+                return {}
+
+            _logger.info(
+                "restaurant_pos: Manual refresh evaluating availability for %d POS products on Branch ID: %s (Session ID: %s)", 
+                len(products), 
+                branch.id if branch else 'None', 
+                self.id
+            )
+
+            availability_map = products._get_pos_availability_payload_bulk(
+                branch=branch,
+                quantity=1,
+            )
+            return availability_map
+        except Exception:
+            _logger.error(
+                "restaurant_pos: Failed to manually refresh availability for Session ID: %s",
+                self.id,
+                exc_info=True
+            )
+            return {}
